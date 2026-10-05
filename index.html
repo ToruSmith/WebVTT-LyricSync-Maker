@@ -159,7 +159,7 @@ function enter(el,kind,list){
 function build(sb){
  anims=[];L.innerHTML="";
  scr=[];lastCt=-1;curFont=sb.font||"";const w=document.createElement("div");w.className="w";L.appendChild(w);
- const lay=CONFIG.lock||sb.lay,en=sb.en||({slam:"",bounce:""}[lay]===""?"":"rise"),dur=sb.e-sb.s,vw=SWd(),vh=SHd();
+ const lay=LAYOUTS.includes(CONFIG.lock||sb.lay)?(CONFIG.lock||sb.lay):"lowerleft",en=sb.en||({slam:"",bounce:""}[lay]===""?"":"rise"),dur=sb.e-sb.s,vw=SWd(),vh=SHd();
  const big=Math.min(CONFIG.bigRatio*vh,vw*.3),small=Math.min(vh*.045,vw*.03);
  const acc="var(--a)",fw=document.createElement("div");fw.className="w";w.appendChild(fw);const content=document.createElement("div");content.className="w";fw.appendChild(content);
  let list=null;
