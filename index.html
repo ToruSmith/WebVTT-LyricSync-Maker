@@ -43,7 +43,7 @@ body.rec #bar,body.rec #panel,body.rec #note{display:none}
  <label>SRT <input type="file" id="fs" accept=".srt,.txt"></label>
  <label>媒體 <input type="file" id="fm" accept="audio/*,video/*"></label>
  <button id="play">播放</button><input type="range" id="seek" min="0" max="1000" value="0">
- <span id="tm">0.0</span><button id="demo">載入範例</button><button id="rec">全螢幕錄製</button><button id="ed">句子編輯器</button><button id="rnd">隨機化</button><button id="tg">參數</button>
+ <span id="tm">0.0</span><button id="demo">載入範例</button><button id="rec">全螢幕錄製</button><button id="ed">句子編輯器</button><button id="rnd">隨機化</button><button id="unlock" style="display:none;background:#7a2a3a">🔒 版型已鎖定，按此解除</button><button id="tg">參數</button>
 </div>
 <div id="panel"></div><div id="note"></div><div id="cd"></div>
 <script>
@@ -227,7 +227,7 @@ function beatTick(t){
 /* ===== 主迴圈：以 currentTime 為時間基準 ===== */
 const now=()=>hasMedia?m.currentTime:vt;
 function endT(){return hasMedia?(m.duration||0):(subs.length?subs[subs.length-1].e+1:0)}
-let lastCt=-1,mUrl=null;const tmEl=$("#tm"),seekEl=$("#seek");
+let lastCt=-1,mUrl=null;const tmEl=$("#tm"),seekEl=$("#seek"),unEl=$("#unlock");
 function loop(ts){
  const dt=(ts-lastP)/1000;lastP=ts;
  if(!hasMedia&&playing){vt+=dt;if(vt>=endT()){vt=endT();playing=false;$("#play").textContent="重播";done()}}
@@ -238,7 +238,7 @@ function loop(ts){
  if(i!==cur){cur=i;if(i>=0)transition();if(i>=0){let sb=subs[i];if(CONFIG.auto&&sb.auto){sb.lay=LAYOUTS[(vary++)%LAYOUTS.length]}build(sb)}else{L.innerHTML="";anims=[]}}
  if(i>=0){const ct=(t-subs[i].s)*1000;if(ct!==lastCt){lastCt=ct;anims.forEach(a=>a.currentTime=ct);scr.forEach(o=>{o.c.textContent=ct>=o.end||/\s/.test(o.f)?o.f:"▒▓░#@%&*"[Math.floor(Math.random()*8)]})}}
  ambient(ts,dt);beatTick(t);
- tmEl.textContent=t.toFixed(1);if(!seeking)seekEl.value=endT()?t/endT()*1000:0;
+ unEl.style.display=CONFIG.lock?"":"none";tmEl.textContent=t.toFixed(1);if(!seeking)seekEl.value=endT()?t/endT()*1000:0;
  requestAnimationFrame(loop);
 }
 let seeking=false;
@@ -248,7 +248,8 @@ $("#seek").onchange=()=>seeking=false;
 const txt=f=>f.arrayBuffer().then(b=>new TextDecoder("utf-8").decode(b));
 $("#fs").onchange=async e=>{if(e.target.files[0]){subs=parseSRT(await txt(e.target.files[0]));cur=-2;note(subs.length+" 句已載入")}};
 $("#fm").onchange=e=>{const f=e.target.files[0];if(!f)return;mUrl&&URL.revokeObjectURL(mUrl);m.src=mUrl=URL.createObjectURL(f);hasMedia=true;m.style.display=f.type.startsWith("video")?"block":"none";cur=-2;note("媒體已載入")};
-$("#demo").onclick=()=>{subs=parseSRT(DEMO);hasMedia=false;m.removeAttribute("src");m.style.display="none";vt=0;cur=-2;Object.assign(CONFIG,{bpm:120,offset:0});play()};
+$("#demo").onclick=()=>{CONFIG.lock="";CONFIG.auto=false;save();panel(); /* 範例要照標記呈現，先解除鎖定與自動變化 */
+ subs=parseSRT(DEMO);hasMedia=false;m.removeAttribute("src");m.style.display="none";vt=0;cur=-2;Object.assign(CONFIG,{bpm:120,offset:0});play()};
 function play(){if(!hasMedia&&vt>=endT())vt=0;playing=true;hasMedia&&(m.play(),initAudio());$("#play").textContent="暫停"}
 function pause(){playing=false;hasMedia&&m.pause();$("#play").textContent="播放"}
 $("#play").onclick=()=>playing?pause():play();
@@ -284,6 +285,7 @@ async function idbPut(k,v){const d=await db;if(d)d.transaction("f","readwrite").
 db.then(d=>{if(!d)return;const s=d.transaction("f").objectStore("f"),c=s.openCursor();c.onsuccess=()=>{const r=c.result;if(r){addFont(r.key.replace(/\.\w+$/,""),r.value);r.continue()}}});
 function css(){document.documentElement.style.setProperty("--c",CONFIG.color);document.documentElement.style.setProperty("--a",CONFIG.accent);$("#mask").style.background=`rgba(0,0,0,${CONFIG.dim/100})`}
 function save(){try{localStorage.setItem("klcfg",JSON.stringify(CONFIG))}catch(e){}}
+$("#unlock").onclick=()=>{CONFIG.lock="";cur=-2;save();panel()};
 $("#tg").onclick=()=>$("#panel").classList.toggle("off");
 /* ===== 階段 2：其餘版型 ===== */
 const CE=(c,css)=>{const e=txtEl(`inset:0;display:flex;align-items:center;justify-content:center;text-align:center;${css}`);c.appendChild(e);return e};
@@ -423,7 +425,7 @@ function extra3(p){
  sel("色彩","tone",[["原色",""],["黑白","grayscale(1)"],["復古褪色","sepia(.6) contrast(.9) saturate(.8)"],["冷色調","hue-rotate(-20deg) saturate(1.1)"],["暖色調","hue-rotate(25deg) saturate(1.2) sepia(.2)"]]);
  sel("節拍來源","beatSrc",[["固定 BPM","bpm"],["音訊低頻偵測","audio"]]);
  sel("句間轉場","trans",[["cut","cut"],["flash 閃白","flash"],["crossfade 淡入","crossfade"],["wipe 掃過","wipe"],["zoom-through 穿越","zoom"]]);
- [["kb","緩慢推近 (Ken Burns)"],["autoPerf","掉幀時自動降級"],["recLite","錄製輕量模式（半解析度畫布、關噪點與發光）"],["bokeh","光斑 bokeh"],["leak","漏光"],["lightning","閃電"],["scratch","老電影刮痕"],["crt","CRT 畫素格與暗角"],["vhs","VHS 抖動與追蹤線"],["invBar","每小節首拍反相閃一下"]].forEach(([k,t])=>{const l=document.createElement("label");const c=document.createElement("input");c.type="checkbox";c.checked=!!CONFIG[k];c.onchange=()=>{CONFIG[k]=c.checked;save();applyScene()};l.append(c," "+t);p.append(l)})}
+ [["kb","緩慢推近 (Ken Burns)"],["autoPerf","掉幀時自動降級"],["recLite","錄製輕量模式（半解析度畫布、關噪點與發光）"],["bokeh","光斑 bokeh"],["leak","漏光"],["lightning","閃電"],["scratch","老電影刮痕"],["crt","CRT 畫素格與暗角"],["vhs","VHS 抖動與追蹤線"],["invBar","每小節首拍反相閃一下"]].forEach(([k,t])=>{const l=document.createElement("label");const c=document.createElement("input");c.type="checkbox";c.checked=!!CONFIG[k];c.onchange=()=>{CONFIG[k]=c.checked;save();applyScene()};l.append(c," "+t);p.append(l)});const rb=document.createElement("button");rb.textContent="重設所有設定";rb.onclick=()=>{if(confirm("清除已儲存的設定並重新載入頁面？")){try{localStorage.removeItem("klcfg")}catch(e){}location.reload()}};p.append(rb)}
 P.push(["particles","粒子數量",0,200,5],["scan","掃描線",0,.2,.01],["grain","噪點",0,.2,.01],["vignette","暗角",0,1,.05],["dim","背景暗度",0,90,5],["beatRot","隨拍旋轉(度)",0,3,.1]);
 Object.assign(PRESETS.櫻花日系,{pMode:"sakura",particles:40,tone:"sepia(.2) saturate(1.1)"});Object.assign(PRESETS.復古VHS,{scan:.12,grain:.12,tone:"sepia(.6) contrast(.9) saturate(.8)"});
 Object.assign(PRESETS.賽博龐克,{pMode:"rain",particles:60,scan:.08,trans:"flash"});Object.assign(PRESETS.強烈節奏,{beatRot:1.2,trans:"flash",particles:90});Object.assign(PRESETS.霓虹夜,{pMode:"stars",particles:80});
