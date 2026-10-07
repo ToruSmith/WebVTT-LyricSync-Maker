@@ -17,6 +17,7 @@ html,body{margin:0;height:100%;background:#050608;color:var(--c);overflow:hidden
 #bg{position:fixed;inset:0;background:linear-gradient(120deg,#07080d,#10162a,#0a0a12,#171026);background-size:300% 300%;animation:flow 24s ease infinite}
 @keyframes flow{50%{background-position:100% 50%}}
 #m{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;display:none}
+#mimg{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;display:none}
 #mask{position:fixed;inset:0;background:rgba(0,0,0,.5)}
 #pulse{position:fixed;inset:0}
 #L{position:absolute;inset:0}
@@ -35,6 +36,13 @@ body.rec #bar,body.rec #panel,body.rec #note{display:none}
 #cv,#cv2{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
 .kb #bg{animation:flow 24s ease infinite,kb 30s ease-in-out infinite alternate}.kb #m{animation:kb 30s ease-in-out infinite alternate}@keyframes kb{to{transform:scale(1.12)}}
 #stage{position:fixed;inset:0;margin:auto;overflow:hidden;contain:layout paint;container-type:size;background:#050608}
+/* 透明背景 / 只輸出字：預覽時以棋盤格表示透明；離線渲染時真正透明 */
+html.nobg,html.nobg body{background:repeating-conic-gradient(#2b2b2b 0 25%,#3c3c3c 0 50%) 0 0/24px 24px}
+html.nobg #stage{background:transparent}
+html.nobg #bg,html.nobg #m,html.nobg #mimg,html.nobg #mask{display:none!important}
+html.alpha #cv,html.alpha #cv2{display:none}
+html.rendering.nobg,html.rendering.nobg body{background:transparent}
+body.tshadow #L{text-shadow:0 2px 12px rgba(0,0,0,.35)}
 </style></head><body>
 <div id="stage"><div id="bg"></div><video id="m" playsinline></video><div id="mask"></div>
 <canvas id="cv"></canvas><div id="pulse"><div id="L"></div></div>
@@ -47,6 +55,9 @@ body.rec #bar,body.rec #panel,body.rec #note{display:none}
 </div>
 <div id="panel"></div><div id="note"></div><div id="cd"></div>
 <script>
+/* ===== 離線渲染模式（?render=1）：由 render/run.mjs 逐幀驅動；一般使用時完全不影響 ===== */
+const RENDER=/[?&]render=1(&|$)/.test(location.search);
+if(RENDER){let _s=0x9e3779b9;Math.random=()=>{_s=_s+0x6D2B79F5|0;let t=Math.imul(_s^_s>>>15,1|_s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 /* ===== 所有可調參數（面板與此物件雙向綁定）===== */
 const CONFIG={bpm:120,offset:0,pulse:.05,bounce:12,flash:.08,flashEvery:4,speed:1,enter:.6,exit:.4,
  bigRatio:.25,spacing:.5,weight:300,color:"#ffffff",accent:"#7aa8ff",dim:50,font:"明體",auto:false};
@@ -56,8 +67,8 @@ const FONTS={明體:'"Noto Serif TC","Source Han Serif TC","Songti TC",PMingLiU,
  楷體:'BiauKai,DFKai-SB,"Kaiti TC",cursive',
  等寬:'Consolas,Menlo,"Courier New",monospace',
  英文展示:'Impact,Georgia,Futura,"Helvetica Neue",sans-serif'};
-Object.assign(CONFIG,{recFps:60,recLite:false,aspect:"fill",particles:50,pMode:"dots",scan:0,grain:.05,vignette:.5,beatRot:0,tone:"",beatSrc:"bpm",trans:"cut",kb:false,autoPerf:true});
-try{Object.assign(CONFIG,JSON.parse(localStorage.getItem("klcfg")||"{}"))}catch(e){}
+Object.assign(CONFIG,{bgMode:"gradient",bgColor:"#050608",maskColor:"#000000",brightness:100,vidBright:100,vidContrast:100,vidSat:100,vidBlur:0,textShadow:false,alphaOnly:false,recFps:60,recLite:false,aspect:"fill",particles:50,pMode:"dots",scan:0,grain:.05,vignette:.5,beatRot:0,tone:"",beatSrc:"bpm",trans:"cut",kb:false,autoPerf:true});
+if(!RENDER)try{Object.assign(CONFIG,JSON.parse(localStorage.getItem("klcfg")||"{}"))}catch(e){}
 const $=s=>document.querySelector(s),SWd=()=>$("#stage").clientWidth,SHd=()=>$("#stage").clientHeight,m=$("#m"),L=$("#L");
 const DEMO=`1
 00:00:01,000 --> 00:00:03,700
@@ -231,6 +242,10 @@ let lastCt=-1,mUrl=null;const tmEl=$("#tm"),seekEl=$("#seek"),unEl=$("#unlock");
 function loop(ts){
  const dt=(ts-lastP)/1000;lastP=ts;
  if(!hasMedia&&playing){vt+=dt;if(vt>=endT()){vt=endT();playing=false;$("#play").textContent="重播";done()}}
+ step(ts,dt);
+ requestAnimationFrame(loop);
+}
+function step(ts,dt){
  const t=now();
  if(Math.abs(t-lastT)>.5){lastBeat=Math.floor((t-CONFIG.offset)*CONFIG.bpm/60)}
  lastT=t;
@@ -239,7 +254,6 @@ function loop(ts){
  if(i>=0){const ct=(t-subs[i].s)*1000;if(ct!==lastCt){lastCt=ct;anims.forEach(a=>a.currentTime=ct);scr.forEach(o=>{o.c.textContent=ct>=o.end||/\s/.test(o.f)?o.f:"▒▓░#@%&*"[Math.floor(Math.random()*8)]})}}
  ambient(ts,dt);beatTick(t);
  unEl.style.display=CONFIG.lock?"":"none";tmEl.textContent=t.toFixed(1);if(!seeking)seekEl.value=endT()?t/endT()*1000:0;
- requestAnimationFrame(loop);
 }
 let seeking=false;
 $("#seek").oninput=e=>{seeking=true;const t=e.target.value/1000*endT();hasMedia?m.currentTime=t:vt=t;cur=-2};
@@ -275,7 +289,22 @@ function panel(){
  const up=document.createElement("input");up.type="file";up.accept=".ttf,.otf,.woff,.woff2";up.onchange=async()=>{const f=up.files[0];if(!f)return;const buf=await f.arrayBuffer();await addFont(f.name.replace(/\.\w+$/,""),buf);idbPut(f.name,buf)};
  const ul=document.createElement("label");ul.textContent="上傳字體";p.append(ul,up);
  const au=document.createElement("label");au.innerHTML='<input type="checkbox" id="auto"> 自動變化版型';p.append(au);$("#auto").checked=CONFIG.auto;$("#auto").onchange=e=>{CONFIG.auto=e.target.checked;cur=-2};
- const tap=document.createElement("button");tap.textContent="Tap 打拍子";let taps=[];tap.onclick=()=>{const n=performance.now();if(taps.length&&n-taps[taps.length-1]>2000)taps=[];taps.push(n);if(taps.length>=4){const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);CONFIG.bpm=Math.round(60000/iv);panel();save()}};p.append(tap);extra(p);extra3(p);
+ const tap=document.createElement("button");tap.textContent="Tap 打拍子";let taps=[];tap.onclick=()=>{const n=performance.now();if(taps.length&&n-taps[taps.length-1]>2000)taps=[];taps.push(n);if(taps.length>=4){const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);CONFIG.bpm=Math.round(60000/iv);panel();save()}};p.append(tap);extra(p);extra3(p);bgPanel(p);
+}
+function bgPanel(p){
+ const h=document.createElement("label");h.innerHTML="<b>── 背景與亮度 ──</b>";h.style.marginTop="14px";p.append(h);
+ const sel=(k,n,opts)=>{const l=document.createElement("label");l.textContent=n;const s=document.createElement("select");s.style.width="100%";
+  opts.forEach(([v,t])=>{const o=document.createElement("option");o.value=v;o.textContent=t;s.append(o)});s.value=CONFIG[k];s.onchange=()=>{CONFIG[k]=s.value;bgCss();save()};p.append(l,s)};
+ const col=(k,n)=>{const l=document.createElement("label");l.textContent=n;const i=document.createElement("input");i.type="color";i.value=CONFIG[k];i.oninput=()=>{CONFIG[k]=i.value;css();save()};p.append(l,i)};
+ const rng=(k,n,a,b,s)=>{const l=document.createElement("label"),i=document.createElement("input"),v=document.createElement("b");l.textContent=n+"：";v.textContent=CONFIG[k];l.append(v);
+  Object.assign(i,{type:"range",min:a,max:b,step:s,value:CONFIG[k]});i.oninput=()=>{CONFIG[k]=+i.value;v.textContent=i.value;bgCss();save()};p.append(l,i)};
+ const chk=(k,n)=>{const l=document.createElement("label"),i=document.createElement("input");i.type="checkbox";i.checked=!!CONFIG[k];i.onchange=()=>{CONFIG[k]=i.checked;bgCss();save()};l.append(i," "+n);p.append(l)};
+ sel("bgMode","背景模式",[["gradient","漸層（流動）"],["solid","純色"],["transparent","透明（無背景）"]]);
+ col("bgColor","純色背景色");col("maskColor","遮罩顏色（深淺見「背景暗度」）");
+ rng("brightness","畫面亮度%",50,150,5);
+ rng("vidBright","影片亮度%",30,200,5);rng("vidContrast","影片對比%",30,200,5);rng("vidSat","影片飽和%",0,200,5);rng("vidBlur","影片模糊(px)",0,30,1);
+ chk("textShadow","文字柔和陰影（提升可讀性）");
+ chk("alphaOnly","只輸出字（透明；預覽顯示棋盤格）");
 }
 function fonts(){const s=$("#fsel");s.innerHTML="";Object.keys(FONTS).forEach(k=>{const o=new Option(k+"　靠近 Aa 123",k);o.style.fontFamily=FONTS[k];s.add(o)});s.value=CONFIG.font}
 async function addFont(name,buf){try{const ff=new FontFace(name,buf);await ff.load();document.fonts.add(ff);FONTS[name]=`"${name}",`+FONTS.明體;fonts();$("#fsel").value=name;CONFIG.font=name;cur=-2;note("字體已載入："+name)}catch(e){alert("字體載入失敗："+e.message)}}
@@ -283,7 +312,14 @@ async function addFont(name,buf){try{const ff=new FontFace(name,buf);await ff.lo
 const db=new Promise(r=>{try{const q=indexedDB.open("klfonts",1);q.onupgradeneeded=()=>q.result.createObjectStore("f");q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}catch(e){r(null)}});
 async function idbPut(k,v){const d=await db;if(d)d.transaction("f","readwrite").objectStore("f").put(v,k)}
 db.then(d=>{if(!d)return;const s=d.transaction("f").objectStore("f"),c=s.openCursor();c.onsuccess=()=>{const r=c.result;if(r){addFont(r.key.replace(/\.\w+$/,""),r.value);r.continue()}}});
-function css(){document.documentElement.style.setProperty("--c",CONFIG.color);document.documentElement.style.setProperty("--a",CONFIG.accent);$("#mask").style.background=`rgba(0,0,0,${CONFIG.dim/100})`}
+function css(){document.documentElement.style.setProperty("--c",CONFIG.color);document.documentElement.style.setProperty("--a",CONFIG.accent);$("#mask").style.background=`rgba(${rgbOf(CONFIG.maskColor)},${CONFIG.dim/100})`;bgCss()}
+function rgbOf(h){h=/^#[0-9a-f]{6}$/i.test(h||"")?h:"#000000";return[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(",")}
+function toneCss(){const f=[CONFIG.tone||"",(+CONFIG.brightness||100)!==100?`brightness(${CONFIG.brightness}%)`:""].filter(Boolean).join(" ");document.body.style.filter=f}
+function bgCss(){const c=CONFIG,r=document.documentElement,bg=$("#bg");
+ if(c.bgMode==="solid"){bg.style.background=c.bgColor;bg.style.animation="none"}else{bg.style.background="";bg.style.animation=""}
+ const vd=c.vidBright==100&&c.vidContrast==100&&c.vidSat==100&&!+c.vidBlur;const vf=vd?"":`brightness(${c.vidBright}%) contrast(${c.vidContrast}%) saturate(${c.vidSat}%) blur(${c.vidBlur}px)`;m.style.filter=vf;const mi=document.getElementById("mimg");if(mi)mi.style.filter=vf;
+ r.classList.toggle("nobg",c.bgMode==="transparent"||!!c.alphaOnly);r.classList.toggle("alpha",!!c.alphaOnly);
+ document.body.classList.toggle("tshadow",!!c.textShadow);toneCss()}
 function save(){try{localStorage.setItem("klcfg",JSON.stringify(CONFIG))}catch(e){}}
 $("#unlock").onclick=()=>{CONFIG.lock="";cur=-2;save();panel()};
 $("#tg").onclick=()=>$("#panel").classList.toggle("off");
@@ -394,9 +430,10 @@ addEventListener("resize",()=>{sizeCv();cur=-2});sizeCv();
 (()=>{const a=document.createElement("canvas");a.width=2;a.height=4;const c=a.getContext("2d");c.fillStyle="#000";c.fillRect(0,0,2,2);scanP=cx.createPattern(a,"repeat");
  const n=document.createElement("canvas");n.width=n.height=128;const g=n.getContext("2d"),d=g.createImageData(128,128);for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}g.putImageData(d,0,0);noise=cx.createPattern(n,"repeat")})();
 const mkP=()=>({x:Math.random()*W,y:Math.random()*H,v:.2+Math.random()*.8,r:1+Math.random()*2.5,p:Math.random()*6.28});
+function audioStep(ts){an.getByteFrequencyData(fb);let sm=0;for(let i=lo;i<=hi;i++)sm+=fb[i];const b=sm/(hi-lo+1)/255;bass+=(b-bass)*.5;bAvg=bAvg*.96+b*.04;
+ if(playing&&b>bAvg*1.35&&b>.3&&ts-lastHit>260){lastHit=ts;audioHit=true}}
 function ambient(ts,dt){
- if(an){an.getByteFrequencyData(fb);let sm=0;for(let i=lo;i<=hi;i++)sm+=fb[i];const b=sm/(hi-lo+1)/255;bass+=(b-bass)*.5;bAvg=bAvg*.96+b*.04;
-  if(playing&&b>bAvg*1.35&&b>.3&&ts-lastHit>260){lastHit=ts;audioHit=true}
+ if(an){audioStep(ts);
   L.style.filter=perfLite?"":`drop-shadow(0 0 ${(bass*28).toFixed(1)}px var(--a))`}else bass*=.9;
  // 效能自動降級：平均 fps < 50 時粒子數減 40%
  if(playing&&dt<.5){fpsN++;fpsT+=dt;if(fpsN>=90){if(CONFIG.autoPerf&&fpsN/fpsT<50&&CONFIG.particles>10){CONFIG.particles=Math.floor(CONFIG.particles*.6);note("偵測到掉幀，已自動降低粒子數至 "+CONFIG.particles)}else if(CONFIG.autoPerf&&fpsN/fpsT<50&&!perfLite){perfLite=true;sizeCv();note("仍然掉幀，已切換為輕量模式（畫布半解析度、關閉噪點與發光）")}fpsN=fpsT=0}}
@@ -416,7 +453,7 @@ function ambient(ts,dt){
  if(CONFIG.vignette>0){cx.globalAlpha=CONFIG.vignette;cx.fillStyle=vig;cx.fillRect(0,0,W,H);cx.globalAlpha=1}
  if(flashT>0){cx.fillStyle=`rgba(255,255,255,${flashT*.5})`;cx.fillRect(0,0,W,H);flashT-=dt*4}overlays(ts,dt);
 }
-function applyScene(){applyStage();document.body.style.filter=CONFIG.tone||"";document.body.classList.toggle("kb",!!CONFIG.kb)}
+function applyScene(){applyStage();toneCss();bgCss();document.body.classList.toggle("kb",!!CONFIG.kb)}
 function extra3(p){
  const sel=(t,k,o)=>{const l=document.createElement("label");l.textContent=t;const e=document.createElement("select");e.style.width="100%";o.forEach(([a,v])=>e.add(new Option(a,v)));e.value=CONFIG[k];e.onchange=()=>{CONFIG[k]=e.value;save();applyScene()};p.append(l,e)};
  sel("錄製幀率","recFps",[["60 fps","60"],["30 fps（較不吃效能）","30"]]);
@@ -554,5 +591,38 @@ function finish(mt){perfLite=false;sizeCv();
  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(chunks,{type:mt||"video/webm"}));a.download=name;document.body.appendChild(a);a.click();a.remove();
  note("已下載 "+name);
 }
-requestAnimationFrame(t=>{lastP=t;loop(t)});
+/* ===== 離線渲染介面（render/run.mjs 呼叫）===== */
+let __fps=30,__last=-1;
+if(RENDER){
+ __fps=Number(new URLSearchParams(location.search).get("fps"))||30;
+ document.body.classList.add("rec");document.documentElement.classList.add("rendering");CONFIG.autoPerf=false;perfLite=false;CONFIG.aspect="fill";
+ /* CSS 動畫（背景流動、kb 推近）從一開始就暫停，避免瀏覽器合成器在頁面載入初期自行播放而造成不一致 */
+ {const st=document.createElement("style");st.textContent="*{animation-play-state:paused!important}";document.head.appendChild(st)}
+ /* 節拍閃動、轉場原本是即時播放的 Web Animation：離線時改為暫停，並依「虛擬時間」逐幀推進 */
+ let rt=[],inRT=false,vnow=0;const _an=Element.prototype.animate;
+ Element.prototype.animate=function(k,o){const a=_an.call(this,k,o);if(inRT){a.pause();a.currentTime=0;rt.push({a,t0:vnow})}return a};
+ const wrap=f=>function(...x){inRT=true;try{return f.apply(this,x)}finally{inRT=false}};
+ onBeat=wrap(onBeat);transition=wrap(transition);
+ let __dur=0,__aud=null;endT=()=>__dur>0?__dur:(subs.length?subs[subs.length-1].e+1:0);
+ const __im=document.createElement("img");__im.id="mimg";m.after(__im);
+ window.__loadProject=async p=>{
+  for(const f of p.fonts||[]){try{const ff=new FontFace(f.name,await(await fetch("data:application/octet-stream;base64,"+f.b64)).arrayBuffer());await ff.load();document.fonts.add(ff);FONTS[f.name]=`"${f.name}",`+FONTS.明體}catch(e){console.error("字體載入失敗："+f.name+"："+e.message)}}
+  an=null;__aud=null;
+  Object.assign(CONFIG,p.config||{});CONFIG.aspect="fill";CONFIG.autoPerf=false;
+  __dur=+p.mediaDuration||0;__im.style.display=p.bgVideo?"block":"none";__im.removeAttribute("src");
+  subs=parseSRT(p.srt==="@demo"||!p.srt?DEMO:p.srt);hasMedia=false;playing=true;vt=0;cur=-2;lastBeat=0;lastT=0;lastCt=-1;__last=-1;rt=[];
+  css();applyScene();sizeCv();await document.fonts.ready;
+  return{duration:endT(),fps:__fps,frames:Math.ceil(endT()*__fps),width:innerWidth,height:innerHeight,subs:subs.length}};
+ window.__setAudio=a=>{lo=a.lo;hi=a.hi;fb=new Uint8Array(512);__aud={rows:Uint8Array.from(a.rows),nb:a.hi-a.lo+1,S:a.S,R:a.R,ptr:0};
+  an={getByteFrequencyData(arr){const o=__aud.ptr++*__aud.nb;for(let i=0;i<__aud.nb;i++)arr[lo+i]=o+i<__aud.rows.length?__aud.rows[o+i]:0}}};
+ window.__renderFrame=async(t,bg)=>{
+  const dt=__last<0?1/__fps:Math.max(0,t-__last);__last=t;vnow=t;vt=t;playing=true;
+  if(__aud){__aud.ptr=Math.round(t*__fps)*__aud.S;for(let j=0;j<__aud.S-1;j++)audioStep(t*1000-(__aud.S-1-j)*1000/__aud.R)}
+  step(t*1000,dt);
+  rt=rt.filter(o=>{const ct=(vnow-o.t0)*1000;if(ct>=o.a.effect.getComputedTiming().endTime){o.a.cancel();return false}o.a.currentTime=ct;return true});
+  document.getAnimations().forEach(a=>{if(a instanceof CSSAnimation){a.pause();a.currentTime=t*1000}});
+  if(bg&&__im.getAttribute("src")!==bg){__im.src=bg;try{await __im.decode()}catch(e){}}
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return true};
+ window.__ready=document.fonts.ready.then(()=>true);
+}else requestAnimationFrame(t=>{lastP=t;loop(t)});
 </script></body></html>
