@@ -779,12 +779,14 @@ function resolvePos(sb){
  if(!ANCH[a])a="";
  return(a||x||y)?{a,x,y}:null}
 const rangeRect=e=>{const r=document.createRange();r.selectNodeContents(e);return r.getBoundingClientRect()};
+/* 子元素外框聯集：用在「內容會被 overflow:hidden 裁切」的版型（split-flap 的字柱遠高於可見磚塊），避免 Range 把被裁掉的部分也算進範圍 */
+const childRect=e=>{let l=1e9,t=1e9,r=-1e9,b=-1e9;[...e.children].forEach(c=>{const q=c.getBoundingClientRect();if(q.width<.5||q.height<.5)return;l=Math.min(l,q.left);t=Math.min(t,q.top);r=Math.max(r,q.right);b=Math.max(b,q.bottom)});return l<r?{left:l,top:t,right:r,bottom:b,width:r-l,height:b-t}:{left:0,top:0,right:0,bottom:0,width:0,height:0}};
 /* 一句版面的實際範圍（相對舞台）：主文 + 裝飾線；有底色／邊框的元素取外框（例如 subtitle-box 的黑條），其餘取文字範圍。不含副文 */
 function groupRect(root){
  const o=$("#stage").getBoundingClientRect();let l=1e9,t=1e9,r=-1e9,b=-1e9;
  root.querySelectorAll("[data-t],[data-pm],.ln").forEach(e=>{if(e.closest("[data-nm]"))return;
   const cs=getComputedStyle(e),bg=cs.backgroundColor,box=e.classList.contains("ln")||(bg!=="rgba(0, 0, 0, 0)"&&bg!=="transparent")||(cs.backgroundImage!=="none"&&!/text/.test(cs.webkitBackgroundClip||cs.backgroundClip||""))||parseFloat(cs.borderTopWidth)>0;
-  const q=box?e.getBoundingClientRect():rangeRect(e);if(q.width<.5||q.height<.5)return;
+  const q=box?e.getBoundingClientRect():e.hasAttribute("data-rg")?childRect(e):rangeRect(e);if(q.width<.5||q.height<.5)return;
   l=Math.min(l,q.left-o.left);t=Math.min(t,q.top-o.top);r=Math.max(r,q.right-o.left);b=Math.max(b,q.bottom-o.top)});
  return l<r&&t<b?{l,t,r,b}:null}
 function placePos(PS,sb,host,fw,content,small){
@@ -983,7 +985,7 @@ Object.assign(NL,{
   const gr=mk("inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 4cqh),repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 4cqh)");
   A(gr,[{clipPath:cl,opacity:1},{clipPath:"inset(0)",opacity:1,offset:.5},{clipPath:"inset(0)",opacity:.35}],{duration:S*1.5,easing:"linear"})},
  "split-flap"(sb,c,w,big,sm,dur){const r=sr(sb.s),chs=[...sb.plain],fs=Math.min(big*.45,SWd()/Math.max(chs.length,4)*.78),pool=[...new Set([...subs.map(x=>x.plain).join(""),..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"])].filter(x=>!/\s/.test(x));
-  const row=CE(c,`font-size:${fs}px;gap:.12em;letter-spacing:0`);
+  const row=CE(c,`font-size:${fs}px;gap:.12em;letter-spacing:0`);row.dataset.rg="1";
   chs.forEach((ch,i)=>{if(/\s/.test(ch)){const s=document.createElement("div");s.style.width=".5em";row.appendChild(s);return}
    const n=7+(r()*5|0),items=Array.from({length:n-1},()=>pool[r()*pool.length|0]);items.push(ch);
    const t=document.createElement("div");t.style.cssText=`position:relative;width:${/[\x00-\xff]/.test(ch)?.7:1.05}em;height:1.3em;line-height:1.3em;overflow:hidden;text-align:center;background:linear-gradient(#2e3441 50%,#232834 50%);border-radius:.1em;border:1px solid rgba(255,255,255,.1);box-shadow:inset 0 0 .15em rgba(0,0,0,.6)`;
