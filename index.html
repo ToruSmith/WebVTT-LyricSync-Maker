@@ -4,7 +4,7 @@
 <!--
  動態歌詞字幕工具（單一 HTML，雙擊用最新版 Chrome / Edge 開啟，零外部連線）
  1. 載入 SRT 與音樂/影片；未載入時為示範模式（靜音）。空白鍵播放/暫停，←→ 跳轉 5 秒。
- 2. 句首標記：#版型+進場+退場~特效1,特效2^位置@樣式，例：#neon+fade+blur-out~float^bc；{字}{字} 用於 split / keyword / marker。
+ 2. 句首標記：#版型+進場+退場~特效1,特效2^位置*字體@樣式，例：#neon+fade+blur-out~float^bc；{字}{字} 用於 split / keyword / marker。
     ^位置：tl tc tr / ml mc mr / bl bc br 九宮格錨點，可加 :X:Y 微調（畫面寬高的 %），auto＝版型原位。
  3. 「句子編輯器」可逐句改設定並匯出帶標記的 SRT；「隨機化」找靈感；面板有預設組合與設定匯出入。
  4. 面板可設畫面比例（16:9 / 9:16）、錄製幀率、錄製輕量模式；所有參數集中在檔案頂部 CONFIG。
@@ -231,19 +231,20 @@ const ENTERS=["fade","rise","drop","zoomin","zoomout","spin","flip","stagger","m
 const BRACE_LAYOUTS=new Set(["split","poster","diagonal","circle-badge","keyword","hanko","marker","annotate"]);
 function parseTag(txt,s,e){
  let lay,en,ex,fx,pos="",st="";
- const r=txt.match(/^#([\w-]+)?(?:\+([\w-]+))?(?:\+([\w-]+))?(?:~([^\s@^]+))?(?:\^([^\s@]+))?(?:@(\S+))?\s*/);
- if(r){[,lay,en,ex,fx,pos,st]=r;st=st||"";pos=pos||"";txt=txt.slice(r[0].length)}
+ const r=txt.match(/^#([\w-]+)?(?:\+([\w-]+))?(?:\+([\w-]+))?(?:~([^\s@^*]+))?(?:\^([^\s@*]+))?(?:\*([^\s@]+))?(?:@(\S+))?\s*/);
+ let font="";   /* 每句字體：*字體名（encodeURIComponent，* 另編成 %2A）；放在 ^位置 之後、@樣式 之前 */
+ if(r){let fr;[,lay,en,ex,fx,pos,fr,st]=r;st=st||"";pos=pos||"";if(fr){try{font=decodeURIComponent(fr)}catch(e){font=fr}}txt=txt.slice(r[0].length)}
  let sub="";const bi=txt.indexOf("||");if(bi>=0){sub=txt.slice(bi+2).trim();txt=txt.slice(0,bi)}
  const br=[...txt.matchAll(/\{([^}]*)\}/g)].map(x=>x[1]);
  let plain=txt.replace(/\{[^}]*\}/g,"").trim();
- if(!lay)lay=br.length?"split":"lowerleft";
+ const lay0=lay;if(!lay)lay=br.length?"split":"lowerleft";
  /* 只有這些版型會把 {} 當成「要強調的關鍵字」另外處理；其他版型若照舊把 {} 內的字整段拿掉，歌詞就會少字。
     所以其他版型只去掉括號符號、保留文字（匯出 SRT 用的 raw 仍保留 {}，不影響編輯器與匯出） */
  if(!BRACE_LAYOUTS.has(lay))plain=txt.replace(/[{}]/g,"").trim();
  /* hl：主文每個字是否在 {} 內，供「非關鍵字版型」做通用強調 */
  let hl=[],ib=false;for(const c of txt){if(c==="{")ib=true;else if(c==="}")ib=false;else hl.push(ib)}
  const s0=txt.replace(/[{}]/g,""),lead=[...s0].length-[...s0.trimStart()].length;hl=hl.slice(lead,lead+[...txt.replace(/[{}]/g,"").trim()].length);
- return{s,e,lay,en,ex,fx,pos,st,sub,br,plain,hl,raw:txt,auto:!r};
+ return{s,e,lay,en,ex,fx,pos,st,font,sub,br,plain,hl,raw:txt,auto:!r||(!!font&&!lay0&&!en&&!ex&&!fx&&!pos&&!st)};
 }
 /* 通用強調：非關鍵字版型中，{} 內的字改用強調色＋加粗＋發光（不改動畫、不改排版） */
 const HL_SKIP=new Set(["text-mask","particle-form","ripple-pool"]);
@@ -513,14 +514,14 @@ const ring=(c,txt,n,css,R,cfg)=>{const r=document.createElement("div");r.classNa
  const t=[...txt];while(t.length<n)t.push(...[...txt,"・"]);t.length=Math.max(n,1);
  t.forEach((ch,i)=>{const a=cfg.arc?(i/(t.length-1||1)-.5)*cfg.arc:i*360/t.length,e=txtEl(`left:50%;top:50%;${css};transform:translate(-50%,-50%) rotate(${a}deg) translateY(-${R}cqh)`);e.textContent=ch;r.appendChild(e);A(e,[{opacity:0},{opacity:1}],{duration:D()*.5,delay:i*(cfg.step||40)})});return r};
 Object.assign(NL,{
- scroll(sb,c){const i=subs.indexOf(sb);for(let k=-2;k<=2;k++){const x=subs[i+k];if(!x)continue;const e=txtEl(`left:8cqw;right:8cqw;top:calc(50% + ${k*11}cqh);margin-top:-1em;font-size:${k?3.2:5}cqh;letter-spacing:.1em;filter:blur(${Math.abs(k)*2}px)`);e.textContent=x.plain;c.appendChild(e);
+ scroll(sb,c){const i=subs.indexOf(sb),ks=(+CONFIG.textScale||100)/100;for(let k=-2;k<=2;k++){const x=subs[i+k];if(!x)continue;const e=txtEl(`left:8cqw;right:8cqw;top:calc(50% + ${k*11*ks}cqh);margin-top:-1em;font-size:${Math.min((k?3.2:5)*1.5*ks*SHd()/100,SWd()*.84*.96/(1.1*Math.max(1,[...x.plain].length)))}px;letter-spacing:.1em;filter:blur(${Math.abs(k)*2}px)`);e.textContent=x.plain;c.appendChild(e);
   A(e,[{translate:"0 9cqh",opacity:0},{translate:"0 0",opacity:k?.8/(Math.abs(k)+.5):1}],{duration:D()*1.3})}},
  orbit(sb,c,w,big,sm,dur){const r=ring(c,sb.plain,sb.plain.length,`font-size:${sm*1.8}px;letter-spacing:0`,Math.min(30,SWd()/SHd()*34),{arc:Math.min(320,sb.plain.length*16),step:70});A(r,[{transform:"rotate(-20deg)"},{transform:"rotate(30deg)"}],{duration:dur*1000,easing:"linear"})},
  diagonal(sb,c,w,big,sm){const r=document.createElement("div");r.className="w";r.style.transform="rotate(-8deg)";c.appendChild(r);
   const a=txtEl(`left:9cqw;top:12cqh;font-size:${Math.min(big*1.8,SWd()*.4)}px;letter-spacing:0;line-height:1`);a.textContent=sb.br[0]||sb.plain.slice(0,2);r.appendChild(a);enter(a,sb.en||"rise");
   const b=txtEl(`left:6cqw;right:6cqw;top:62cqh;font-size:${sm*1.5}px`);b.textContent=sb.plain;r.appendChild(b);enter(b,"fade")},
- marquee(sb,c){const h=(sb.plain+"　").repeat(6);[[ "30cqh","0","-50%",""],["52cqh","-50%","0","color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.7)"]].forEach(([top,a,b,css],i)=>{
-  const e=txtEl(`left:0;top:${top};font-size:${i?14:10}cqh;white-space:nowrap;letter-spacing:.1em;${css}`);e.textContent=h+h;c.appendChild(e);A(e,[{translate:a+" 0"},{translate:b+" 0"}],{duration:12000,iterations:Infinity,easing:"linear"})});enter(c,"fade")},
+ marquee(sb,c){const ks=(+CONFIG.textScale||100)/100,h=(sb.plain+"　").repeat(6);[[ -11,"0","-50%",""],[13.4,"-50%","0","color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.7)"]].forEach(([off,a,b,css],i)=>{
+  const e=txtEl(`left:0;top:${47+off*ks}cqh;margin-top:-.6em;font-size:${(i?14:10)*ks}cqh;white-space:nowrap;letter-spacing:.1em;${css}`);e.textContent=h+h;c.appendChild(e);A(e,[{translate:a+" 0"},{translate:b+" 0"}],{duration:12000,iterations:Infinity,easing:"linear"})});enter(c,"fade")},
  "circle-badge"(sb,c,w,big,sm,dur){const r=ring(c,sb.plain,22,`font-size:${sm*1.4}px;letter-spacing:0`,24,{step:30});A(r,[{transform:"rotate(0)"},{transform:"rotate(360deg)"}],{duration:12000,iterations:Infinity,easing:"linear"});
   const e=CE(c,`font-size:${big*1.3}px;letter-spacing:0`);e.textContent=sb.br[0]||sb.plain[0];enter(e,"zoomin")},
  "zoom-tunnel"(sb,c,w,big){const z=fit(sb,big);for(let i=0;i<5;i++){const e=CE(c,`font-size:${z}px;opacity:.6`);e.textContent=sb.plain;A(e,[{transform:"scale(.6)",opacity:0},{opacity:.5,offset:.3},{transform:"scale(3)",opacity:0}],{duration:2000,delay:i*400,iterations:Infinity,easing:"ease-in"})}
@@ -540,7 +541,8 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 function randomize(){subs.forEach(x=>{x.lay=pick(LAYOUTS);x.en=pick(ENTERS);x.ex=pick(EXITS);x.fx=Math.random()<.4?pick(FXS):"";x.auto=false});cur=-2;note("已隨機化版型、動畫與特效")}
 $("#rnd").onclick=randomize;
 const tc=t=>{const z=(n,l=2)=>String(n).padStart(l,"0"),h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return`${z(h)}:${z(m)}:${z(Math.floor(s))},${z(Math.round(s%1*1000),3)}`};
-const tag=x=>x.auto?"":"#"+x.lay+(x.en||x.ex?"+"+(x.en||"fade"):"")+(x.ex?"+"+x.ex:"")+(x.fx?"~"+x.fx:"")+(x.pos?"^"+x.pos:"")+(x.st?"@"+x.st:"")+" ";
+const fTag=x=>x.font?"*"+encodeURIComponent(x.font).replace(/\*/g,"%2A"):"";
+const tag=x=>x.auto?(x.font?"#"+fTag(x)+" ":""):"#"+x.lay+(x.en||x.ex?"+"+(x.en||"fade"):"")+(x.ex?"+"+x.ex:"")+(x.fx?"~"+x.fx:"")+(x.pos?"^"+x.pos:"")+fTag(x)+(x.st?"@"+x.st:"")+" ";
 const srtText=()=>subs.map((x,i)=>`${i+1}\n${tc(x.s)} --> ${tc(x.e)}\n${tag(x)}${x.raw}${x.sub?"||"+x.sub:""}\n`).join("\n");
 function exportSRT(){dl(new Blob([srtText()],{type:"text/plain"}),"lyrics_tagged.srt")}
 /* ===== 匯出渲染專案：srt（帶標記）＋ config ＋ 已上傳字體（base64）→ project.json，給 node render/run.mjs --project 用 ===== */
@@ -548,7 +550,7 @@ let mediaInfo=null,projInfo=null;
 const b64Of=buf=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>{const u=String(r.result);ok(u.slice(u.indexOf(",")+1))};r.onerror=()=>no(r.error);r.readAsDataURL(new Blob([buf]))});
 async function buildProject(){
  const fonts=[];for(const[name,buf]of FONTBUF)if(FONTS[name])fonts.push({name,b64:await b64Of(buf)});
- return{srt:srtText(),config:JSON.parse(JSON.stringify(CONFIG)),...(fonts.length?{fonts}:{})}}
+ return{srt:srtText(),config:JSON.parse(JSON.stringify(CONFIG)),...(fonts.length?{fonts}:{}),...(mediaInfo?{media:{name:mediaInfo.name,video:!!mediaInfo.video}}:{})}}
 function projCmd(){   // 依目前畫面比例給建議解析度（短邊 1080）；離線渲染一律以此尺寸排版，比例要和預覽一致外觀才會一致
  const a=CONFIG.aspect,st=$("#stage"),r=a==="9:16"?9/16:a==="16:9"?16/9:(st.clientWidth/st.clientHeight||16/9);
  const W=r>=1?Math.round(1080*r/2)*2:1080,H=r>=1?1080:Math.round(1080/r/2)*2,q=f=>/[\s()&]/.test(f)?`"${f}"`:f;
@@ -605,7 +607,17 @@ function extra(p){
  mk("清除瀏覽器記住的設定（恢復預設）",()=>{if(confirm("會清除瀏覽器記住的所有設定（顏色、色彩、陰影…）並重新載入頁面；已上傳的字體不受影響。確定嗎？")){try{localStorage.removeItem("klcfg")}catch(e){}location.reload()}});
   mk("匯出設定 JSON",()=>dl(new Blob([JSON.stringify(CONFIG)],{type:"application/json"}),"lyrics_config.json"));
  let pfill=()=>{};mk("匯出渲染專案（project.json）",async()=>{await exportProject();pfill()});pfill=projBox(p);
- const f=document.createElement("input");f.type="file";f.accept=".json";f.onchange=async()=>{try{{const J=JSON.parse(await txt(f.files[0]));Object.assign(CONFIG,JSON.parse(JSON.stringify(CFG_DEFAULTS)),J)}css();cur=-2;save();panel()}catch(e){alert("設定檔格式錯誤："+e.message)}};p.append(f);
+ const f=document.createElement("input");f.type="file";f.accept=".json";
+  f.onchange=async()=>{try{const J=JSON.parse(await txt(f.files[0]));
+   if(J&&typeof J==="object"&&J.config&&typeof J.config==="object"&&"srt" in J){   /* 渲染專案（project.json）：字幕＋設定＋字體一起還原 */
+    for(const ft of J.fonts||[]){try{const buf=await(await fetch("data:application/octet-stream;base64,"+(ft.b64||ft.data))).arrayBuffer();await addFont(ft.name,buf);idbPut(ft.name+".ttf",buf)}catch(e){console.error("字體還原失敗："+ft.name,e)}}
+    Object.assign(CONFIG,JSON.parse(JSON.stringify(CFG_DEFAULTS)),J.config);   /* 在字體載入之後套用，config.font 才會是最後的值 */
+    subs=parseSRT(J.srt==="@demo"?DEMO:String(J.srt||""));
+    let msg=`專案已還原：${subs.length} 句${J.fonts&&J.fonts.length?"，字體："+J.fonts.map(x=>x.name).join("、"):""}`;
+    if(J.media&&J.media.name&&!hasMedia){mediaInfo=J.media;msg+=`。音樂／影片不會存在專案裡，請再載入「${J.media.name}」`;alert(msg)}
+    css();cur=-2;save();panel();note(msg);return}
+   Object.assign(CONFIG,JSON.parse(JSON.stringify(CFG_DEFAULTS)),J);css();cur=-2;save();panel()}catch(e){alert("設定檔格式錯誤："+e.message)}};
+  const fl=document.createElement("label");fl.textContent="匯入設定 JSON 或渲染專案（project.json）";p.append(fl,f);
 }
 /* ===== 階段 3：Canvas 氛圍層 / 音訊低頻偵測 / 效能自動降級 ===== */
 let ac=null,an=null,fb=null,lo=1,hi=4,bass=0,bAvg=0,lastHit=0,audioHit=false,abeat=0,flashT=0,ps=[],fpsN=0,fpsT=0;
@@ -693,10 +705,10 @@ Object.assign(NL,{
  "flash-words"(sb,c,w,big,sm,dur){let t=sb.plain.split(/[\s，。、,.！!？?]+/).filter(Boolean);if(t.length<2){const ch=[...sb.plain];t=[];for(let i=0;i<ch.length;i+=2)t.push(ch.slice(i,i+2).join(""))}
   const d=dur*900/t.length;t.forEach((x,i)=>{const e=CE(c,`font-size:${Math.min(big*1.4,SWd()/Math.max(x.length,1)*.8)}px;letter-spacing:.05em`);e.textContent=x;
    A(e,[{opacity:0,transform:"scale(1.15)"},{opacity:1,transform:"scale(1)",offset:.05},{opacity:1,offset:.95},{opacity:0}],{duration:d,delay:i*d,easing:"linear"})})},
- keyword(sb,c){const e=txtEl("inset:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;padding:0 8cqw;letter-spacing:.3em");c.appendChild(e);let ks=0;
+ keyword(sb,c,w,big,sm){const e=txtEl("inset:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;padding:0 8cqw;letter-spacing:.3em");c.appendChild(e);let ks=0;
   const parts=sb.raw.split(/(\{[^}]*\})/).filter(Boolean);if(!sb.br.length)parts.splice(0,1,...[sb.raw.slice(0,2),"{"+0+"}"].slice(0,0),`{${sb.raw.slice(0,2)}}`,sb.raw.slice(2));
-  parts.forEach(p=>{const k=/^\{/.test(p),t=k?p.slice(1,-1):p,sp=document.createElement("span");sp.textContent=t;sp.style.cssText=k?`font-size:${SHd()*.2}px;color:var(--a);margin:0 1cqw;letter-spacing:0;display:inline-block`:`font-size:${SHd()*.04}px;opacity:.6;white-space:pre-wrap`;e.appendChild(sp);
-   k?A(sp,[{opacity:0,transform:"scale(.4)"},{opacity:1,transform:"scale(1.12)",offset:.6},{opacity:1,transform:"scale(1)"}],{duration:D(),delay:(ks++)*200}):A(sp,[{opacity:0},{opacity:.6}],{duration:D()})})},
+  parts.forEach(p=>{const k=/^\{/.test(p),t=k?p.slice(1,-1):p,sp=document.createElement("span");sp.textContent=t;sp.style.cssText=k?`font-size:${big*.8}px;color:var(--a);margin:0 1cqw;letter-spacing:0;display:inline-block`:`font-size:${big*.267}px;opacity:.75;white-space:pre-wrap`;e.appendChild(sp);
+   k?A(sp,[{opacity:0,transform:"scale(.4)"},{opacity:1,transform:"scale(1.12)",offset:.6},{opacity:1,transform:"scale(1)"}],{duration:D(),delay:(ks++)*200}):A(sp,[{opacity:0},{opacity:.75}],{duration:D()})})},
  trail(sb,c,w,big){const z=fit(sb,big)*.8;for(let i=5;i>=0;i--){const e=CE(c,`font-size:${z}px;opacity:${i?.4/i:1}`);if(i)e.dataset.nm=1;e.textContent=sb.plain;A(e,[{translate:"-6cqw 0"},{translate:"6cqw 0"}],{duration:2400,delay:i*70,iterations:Infinity,direction:"alternate",easing:"ease-in-out",composite:"replace"})}},
  "text-mask"(sb,c,w,big){const nn=Math.max(sb.plain.length,3),ln=Math.ceil(nn/18),e=CE(c,`font-size:${Math.min(big*.88,SWd()/(nn/ln)*.86,SHd()/ln*.8)}px;font-weight:900;letter-spacing:.05em;white-space:nowrap;background-image:linear-gradient(90deg,var(--a),#fff,var(--a));background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent`);e.textContent=sb.plain;
   A(e,[{backgroundPosition:"0 0"},{backgroundPosition:"200% 0"}],{duration:5000,iterations:Infinity,easing:"linear"});enter(e,sb.en||"zoomin")},
@@ -961,7 +973,7 @@ Object.assign(NL,{
    if(i===0){const t=document.createElement("div");t.style.cssText=`position:absolute;left:50%;top:-${fs*.3}px;width:${fs*1.6}px;height:${fs*.55}px;translate:-50% 0;rotate:-4deg;background:rgba(255,235,160,.6)`;card.appendChild(t)}
    row.appendChild(card);A(card,[{translate:`${(i%2?1:-1)*(90+r()*20)}cqw ${(r()-.5)*30}cqh`,scale:1.4,opacity:0},{translate:"0 0",scale:1,opacity:1}],{duration:D()*1.1,delay:i*320/CONFIG.speed,easing:"cubic-bezier(.2,.8,.2,1)"})});
   if(sb.en)enter(row,sb.en,list)},
- "page-flip"(sb,c,w,big,sm,dur,list){const i=subs.indexOf(sb),prev=i>0?subs[i-1].plain:"",vw=SWd(),vh=SHd(),pw=Math.min(vw*.4,vh*.78),ph=Math.min(vh*.56,pw*.8);
+ "page-flip"(sb,c,w,big,sm,dur,list){const i=subs.indexOf(sb),prev=i>0?subs[i-1].plain:"",vw=SWd(),vh=SHd(),ks=(+CONFIG.textScale||100)/100,pw=Math.min(vw*.4*ks,vw*.48,vh*.78*ks),ph=Math.min(vh*.56*ks,pw*.8,vh*.92);
   const st=document.createElement("div");st.style.cssText=`position:absolute;inset:0;perspective:${vw*1.5}px`;c.appendChild(st);
   const pg=(txt,css)=>{const p=txtEl(`top:${-ph/2}px;width:${pw}px;height:${ph}px;background:${PAPER};color:${INK};display:flex;align-items:center;justify-content:center;font-size:${Math.min(ph*.3,pw*.8/Math.max([...txt].length,3))}px;letter-spacing:.12em;box-shadow:0 1.5cqh 4cqh rgba(0,0,0,.45);${css}`);p.style.left="50%";p.style.top="50%";p.style.marginTop=-ph/2+"px";p.textContent=txt;return p};
   const left=pg("","margin-left:"+(-pw)+"px;background:linear-gradient(90deg,#e6e0d0,#d9d2bf)");st.appendChild(left);
