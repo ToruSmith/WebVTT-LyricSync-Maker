@@ -397,7 +397,7 @@ function panel(){
  const p=$("#panel");p.innerHTML="";
  P.forEach(([k,n,a,b,s])=>{const l=document.createElement("label"),i=document.createElement("input");l.textContent=n+"：";const v=document.createElement("b");v.textContent=CONFIG[k];l.append(v);
   Object.assign(i,{type:"range",min:a,max:b,step:s,value:CONFIG[k]});i.oninput=()=>{CONFIG[k]=+i.value;v.textContent=i.value;save();if(["bigRatio","textScale","spacing","weight","enter","exit","speed"].includes(k))cur=-2};p.append(l,i)});
- const mkc=(k,n)=>{const l=document.createElement("label"),i=document.createElement("input");l.textContent=n;i.type="color";i.value=CONFIG[k];i.oninput=()=>{CONFIG[k]=i.value;css();save()};p.append(l,i)};
+ const mkc=(k,n)=>{const l=document.createElement("label"),i=document.createElement("input");l.textContent=n;i.type="color";i.value=CONFIG[k];i.oninput=()=>{CONFIG[k]=i.value;css();cur=-2;save()};p.append(l,i)};
  mkc("color","文字顏色");mkc("accent","強調色");
  const fl=document.createElement("label");fl.textContent="字體";const sel=document.createElement("select");sel.id="fsel";sel.style.width="100%";p.append(fl,sel);fonts();
  sel.onchange=()=>{CONFIG.font=sel.value;save();cur=-2};
@@ -418,7 +418,7 @@ function bgPanel(p){
  const h=document.createElement("label");h.innerHTML="<b>── 背景與亮度 ──</b>";h.style.marginTop="14px";p.append(h);
  const sel=(k,n,opts)=>{const l=document.createElement("label");l.textContent=n;const s=document.createElement("select");s.style.width="100%";
   opts.forEach(([v,t])=>{const o=document.createElement("option");o.value=v;o.textContent=t;s.append(o)});s.value=CONFIG[k];s.onchange=()=>{CONFIG[k]=s.value;bgCss();save()};p.append(l,s)};
- const col=(k,n)=>{const l=document.createElement("label");l.textContent=n;const i=document.createElement("input");i.type="color";i.value=CONFIG[k];i.oninput=()=>{CONFIG[k]=i.value;css();save()};p.append(l,i)};
+ const col=(k,n)=>{const l=document.createElement("label");l.textContent=n;const i=document.createElement("input");i.type="color";i.value=CONFIG[k];i.oninput=()=>{CONFIG[k]=i.value;css();cur=-2;save()};p.append(l,i)};
  const rng=(k,n,a,b,s)=>{const l=document.createElement("label"),i=document.createElement("input"),v=document.createElement("b");l.textContent=n+"：";v.textContent=CONFIG[k];l.append(v);
   Object.assign(i,{type:"range",min:a,max:b,step:s,value:CONFIG[k]});i.oninput=()=>{CONFIG[k]=+i.value;v.textContent=i.value;bgCss();save()};p.append(l,i)};
  const chk=(k,n)=>{const l=document.createElement("label"),i=document.createElement("input");i.type="checkbox";i.checked=!!CONFIG[k];i.onchange=()=>{CONFIG[k]=i.checked;bgCss();save()};l.append(i," "+n);p.append(l)};
