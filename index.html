@@ -237,7 +237,25 @@ function parseTag(txt,s,e){
  /* 只有這些版型會把 {} 當成「要強調的關鍵字」另外處理；其他版型若照舊把 {} 內的字整段拿掉，歌詞就會少字。
     所以其他版型只去掉括號符號、保留文字（匯出 SRT 用的 raw 仍保留 {}，不影響編輯器與匯出） */
  if(!BRACE_LAYOUTS.has(lay))plain=txt.replace(/[{}]/g,"").trim();
- return{s,e,lay,en,ex,fx,pos,st,sub,br,plain,raw:txt,auto:!r};
+ /* hl：主文每個字是否在 {} 內，供「非關鍵字版型」做通用強調 */
+ let hl=[],ib=false;for(const c of txt){if(c==="{")ib=true;else if(c==="}")ib=false;else hl.push(ib)}
+ const s0=txt.replace(/[{}]/g,""),lead=[...s0].length-[...s0.trimStart()].length;hl=hl.slice(lead,lead+[...txt.replace(/[{}]/g,"").trim()].length);
+ return{s,e,lay,en,ex,fx,pos,st,sub,br,plain,hl,raw:txt,auto:!r};
+}
+/* 通用強調：非關鍵字版型中，{} 內的字改用強調色＋加粗＋發光（不改動畫、不改排版） */
+const HL_SKIP=new Set(["text-mask","particle-form","ripple-pool"]);
+function applyHL(root,sb,lay){
+ if(!sb.hl||!sb.hl.some(Boolean)||BRACE_LAYOUTS.has(lay)||HL_SKIP.has(lay))return;
+ const P=[...sb.plain],css=e=>{e.style.color="var(--a)";e.style.fontWeight="900";e.style.textShadow="0 0 .35em var(--a)"};
+ const parents=new Set([...root.querySelectorAll(".ch")].map(x=>x.parentNode));
+ parents.forEach(pn=>{const k=[...pn.children].filter(x=>x.classList.contains("ch"));if(k.length===P.length)k.forEach((x,i)=>{if(sb.hl[i])css(x)})});
+ let cur=0;
+ [...root.querySelectorAll("*")].forEach(el=>{
+  if(el.children.length||el.classList.contains("ch")||el.tagName==="CANVAS"||el.tagName==="svg"||el.closest("svg"))return;
+  const T=[...el.textContent];if(!T.length)return;
+  let off=-1;if(el.textContent===sb.plain)off=0;else if(cur<P.length&&P.slice(cur,cur+T.length).join("")===el.textContent){off=cur;cur+=T.length}
+  if(off<0)return;
+  el.textContent="";T.forEach((c,i)=>{const sp=document.createElement("span");sp.textContent=c;if(sb.hl[off+i])css(sp);el.appendChild(sp)})});
 }
 /* ===== 動畫工具：全部暫停，每幀由媒體時間設定 currentTime，拖動進度條自動正確 ===== */
 function A(el,kf,o){const a=el.animate(kf,Object.assign({fill:"both",easing:"cubic-bezier(.2,.7,.2,1)"},o));a.pause();anims.push(a);return a}
@@ -316,6 +334,7 @@ function build(sb){
   flicker:[[{opacity:1},{opacity:.4},{opacity:1},{opacity:.85},{opacity:.2},{opacity:1}],1300,"steps(5)"],
   rainbow:[[{filter:"hue-rotate(0)"},{filter:"hue-rotate(360deg)"}],6000,"linear"]};
  fl.forEach(f=>{if(FXH[f])return FXH[f](fw,dur);const k=FK[f];if(k)A(fw,k[0],{duration:k[1],iterations:Infinity,easing:k[2]})});
+ applyHL(content,sb,lay);
  applyStyles(content,sb,dur);
  if(!(PS&&placePos(PS,sb,host,fw,content,small)))addSub(sb,content,small,lay==="lowerleft");
 }
