@@ -1,0 +1,11 @@
+{
+  "srt": "@demo",
+  "config": {
+    "bpm": 120,
+    "bgMode": "gradient",
+    "dim": 30,
+    "brightness": 110,
+    "textShadow": true,
+    "alphaOnly": false
+  }
+}
