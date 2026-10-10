@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><title>動態歌詞字幕工具 [fix-1010b]</title>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>動態歌詞字幕工具 [fix-1010e]</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!--
  動態歌詞字幕工具（單一 HTML，雙擊用最新版 Chrome / Edge 開啟，零外部連線）
@@ -31,7 +31,7 @@ button,select,input[type=file]{font:inherit;color:#fff;background:#232a44;border
 #panel{position:fixed;top:44px;right:0;width:230px;bottom:0;background:rgba(10,12,20,.85);padding:10px;font-size:12px;overflow:auto;z-index:5;transition:transform .3s}
 #panel.off{transform:translateX(100%)}
 #panel label{display:block;margin:6px 0 2px}#panel input[type=range]{width:100%}
-body.rec #bar,body.rec #panel,body.rec #note{display:none}
+body.rec #bar,body.rec #panel,body.rec #note,body.rec #edm,body.rec #edgrip{display:none}
 #note{position:fixed;left:12px;bottom:10px;font-size:12px;opacity:.7;z-index:5;max-width:60vw}
 #cd{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-size:30vh;background:#000;z-index:9}
 .ln{height:2px;background:rgba(255,255,255,.6)}
@@ -44,7 +44,7 @@ body.rec #guides,html.rendering #guides{display:none!important}
 #stage{touch-action:none}
 #cv,#cv2{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
 .kb #bg{animation:flow 24s ease infinite,kb 30s ease-in-out infinite alternate}.kb #m{animation:kb 30s ease-in-out infinite alternate}@keyframes kb{to{transform:scale(1.12)}}
-#stage{position:fixed;inset:0;margin:auto;overflow:hidden;contain:layout paint;container-type:size;background:#050608}
+#stage{--avw:calc(100vw - var(--edr,0px));--avh:calc(100vh - var(--edt,0px) - var(--edh,0px));position:fixed;inset:var(--edt,0px) var(--edr,0px) var(--edh,0px) 0;margin:auto;overflow:hidden;contain:layout paint;container-type:size;background:#050608}
 /* 透明背景 / 只輸出字：預覽時以棋盤格表示透明；離線渲染時真正透明 */
 html.nobg,html.nobg body{background:repeating-conic-gradient(#2b2b2b 0 25%,#3c3c3c 0 50%) 0 0/24px 24px}
 html.nobg #stage{background:transparent}
@@ -59,26 +59,61 @@ html.chroma,html.chroma body,html.chroma #stage,html.chroma #bg{background:var(-
 html.chroma #m,html.chroma #mimg,html.chroma #mask,html.chroma #cv,html.chroma #cv2{display:none!important}
 html.chroma body,html.chroma #L,html.chroma #L path{filter:none!important}
 html.chroma #L,html.chroma #L *{text-shadow:none!important;box-shadow:none!important}
+/* 頂欄精簡：檔案欄位改成按鈕式（原生 input 隱藏，功能不變），窄視窗可橫向捲動不擠壞 */
+.fb{font:inherit;background:#232a44;border:1px solid #3a4470;border-radius:4px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.fb:hover{background:#2c3558}.fb input{display:none}
+#bar{overflow-x:auto;scrollbar-width:none}#bar button{white-space:nowrap}#seek{min-width:60px}
+/* 面板分組（可收合） */
+#panel details.ps{border:1px solid #2a3252;border-radius:6px;margin:0 0 6px;background:rgba(255,255,255,.03)}
+#panel summary{cursor:pointer;padding:7px 8px;font-weight:700;list-style:none;display:flex;justify-content:space-between;user-select:none}
+#panel summary::-webkit-details-marker{display:none}
+#panel summary::after{content:"▸";opacity:.6;transition:transform .15s}
+#panel details[open]>summary{border-bottom:1px solid #2a3252;position:sticky;top:-10px;background:#10152a;z-index:1;border-radius:6px 6px 0 0}
+#panel details[open]>summary::after{transform:rotate(90deg)}
+#panel .pb{padding:2px 8px 10px}
+#panel .pt{display:flex;gap:6px;margin-bottom:6px}#panel .pt button{flex:1;font-size:11px;padding:3px}
+/* 句子編輯器分隔線（可拖曳調整預覽／編輯器比例） */
+#edgrip{position:fixed;left:0;right:240px;height:8px;cursor:ns-resize;z-index:7;background:rgba(122,168,255,.25);touch-action:none}
+#edgrip:hover,#edgrip.drag{background:rgba(122,168,255,.65)}
+/* ===== [QUICK] 快捷選單 ===== */
+#qk{position:fixed;top:44px;right:8px;width:340px;max-height:calc(100vh - 56px);display:none;flex-direction:column;background:rgba(10,12,20,.97);border:1px solid #3a4470;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.55);z-index:8;font-size:13px;color:#fff}
+#qk.on{display:flex}
+#qks{margin:8px;width:calc(100% - 16px);font:inherit;color:#fff;background:#141a30;border:1px solid #3a4470;border-radius:4px;padding:6px 8px;outline:none}
+#qks:focus{border-color:var(--a)}
+#qkl{overflow:auto;padding:0 6px 8px}
+.qg{margin:8px 4px 2px;font-size:11px;letter-spacing:.08em;opacity:.55}
+.qi{display:flex;justify-content:space-between;gap:10px;padding:6px 8px;border-radius:5px;cursor:pointer}
+.qi.act{background:#2a3566}
+.qi.dis{opacity:.4}
+.qh{opacity:.55;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%}
+.qe{padding:12px 8px;opacity:.6;text-align:center;line-height:1.6}
+body.rec #qk,html.rendering #qk{display:none!important}
 </style></head><body>
 <div id="stage"><div id="bg"></div><video id="m" playsinline></video><div id="mask"></div>
 <canvas id="cv"></canvas><div id="pulse"><div id="L"></div></div>
 <canvas id="cv2"></canvas><div id="guides"><i id="vc"></i><i id="vl"></i><i id="vr"></i><i id="hc"></i><i id="ht"></i><i id="hb"></i></div></div>
 <div id="bar">
- <label>SRT <input type="file" id="fs" accept=".srt,.txt"></label>
- <label>媒體 <input type="file" id="fm" accept="audio/*,video/*"></label>
+ <label class="fb" title="載入 SRT 字幕">📄 載入 SRT<input type="file" id="fs" accept=".srt,.txt"></label>
+ <label class="fb" title="載入音樂或影片">🎵 載入媒體<input type="file" id="fm" accept="audio/*,video/*"></label>
  <button id="play">播放</button><input type="range" id="seek" min="0" max="1000" value="0">
- <span id="tm">0.0</span><button id="demo">載入範例</button><button id="rec">全螢幕錄製</button><button id="ed">句子編輯器</button><button id="rnd">隨機化</button><button id="unlock" style="display:none;background:#7a2a3a">🔒 版型已鎖定，按此解除</button><button id="tg">參數</button>
+ <span id="tm">0.0</span><button id="demo">載入範例</button><button id="rec">全螢幕錄製</button><button id="ed">句子編輯器</button><button id="rnd">隨機化</button><button id="unlock" style="display:none;background:#7a2a3a">🔒 版型已鎖定，按此解除</button><button id="qkb" title="所有工具與匯出功能（Ctrl+K）">⚡ 快捷</button><button id="tg">參數</button>
 </div>
 <div id="panel"></div><div id="note"></div><div id="cd"></div>
+<div id="qk"><input id="qks" type="text" placeholder="搜尋功能…（例：srt、錄製、位置、霓虹）" autocomplete="off"><div id="qkl"></div></div>
 <script>
 /* ===== 區段目錄（行號會隨編輯變動，請用 grep -n "===== \[" index.html 取得最新行號，再只讀需要的區段）=====
    核心流程：[RENDER] [CONFIG] [PARSE] [ANIM] [BUILD] [BEAT] [LOOP] [LOAD]
-   介面　　：[UI-PANEL] [UI-EDITOR] [EXPORT]（extra() 與 editor() 也在 [EXPORT] 區段內）
+   介面　　：[UI-PANEL] [UI-EDITOR] [EXPORT]（extra() 與 editor() 也在 [EXPORT] 區段內）[QUICK]（⚡快捷選單：所有工具／匯出的單一入口）；句子編輯器與預覽並排＝edLayout()（在 [EXPORT] 區段）
    版型　　：[LAY-A] [FX-ENTER-EXIT]（含版型 B）[LAY-C] [LAY-D] [LAY-E] [LAY-F] [LAY-G]（pv-lyric / pv-vertical）；水波 WebGL 在 [WATER]
    樣式與位置：[STYLE]（@ 樣式、|| 副文）[POS]（^ 位置）
    畫面層　：[AMBIENT]（含 extra3 面板）[OVERLAY]
    輸出　　：[RECORD]（即時錄製）[RENDER-API]（離線渲染）　其他：[MISC]
-   新增版型要動的地方：該版型區段的 NL 物件、LAYOUTS.push 名單；含 {} 強調字 → BRACE_LAYOUTS；滿版 → FULLBLEED；想放進範例 → DEMO */
+   新增版型要動的地方：該版型區段的 NL 物件、LAYOUTS.push 名單；含 {} 強調字 → BRACE_LAYOUTS；滿版 → FULLBLEED；想放進範例 → DEMO
+   新增「工具／匯出」功能：功能本體照舊寫在對應區段 → 到 [QUICK] 的 quickActions() 加一筆 {id,g,t,h,k,on,run} 就會出現在 ⚡快捷選單（Ctrl+K）→ 若要在面板有按鈕，再到 extra()/extra3() 加。
+   新增面板區段：該區塊開頭呼叫 secAnchor(p,"id")，並把 id 加進 [QUICK] 的 QK_SECS 與「面板跳轉」。
+   共用函式：匯出＝exportSRT / exportConfig / exportProjectUI；重設＝resetSettings；localStorage 鍵＝LS_CFG / LS_QK / LS_PO。
+   面板分組：panel() 結尾的 foldPanel() 依 secAnchor 把扁平內容折成可收合分組（標題見 PANEL_TITLES）；新增區段記得補標題。
+   改完用網址加 ?check=1 開啟，F12 主控台會跑 selfCheck()（含快捷表驗證）。 */
 /* ===== [RENDER] 離線渲染模式（?render=1）：由 render/run.mjs 逐幀驅動；一般使用時完全不影響（介面端在檔尾 [RENDER-API]）===== */
 const RENDER=/[?&]render=1(&|$)/.test(location.search);
 if(RENDER){let _s=0x9e3779b9;Math.random=()=>{_s=_s+0x6D2B79F5|0;let t=Math.imul(_s^_s>>>15,1|_s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -93,7 +128,8 @@ const FONTS={明體:'"Noto Serif TC","Source Han Serif TC","Songti TC",PMingLiU,
  英文展示:'Impact,Georgia,Futura,"Helvetica Neue",sans-serif'};
 Object.assign(CONFIG,{bokeh:0,leak:0,lightning:0,scratch:0,crt:0,vhs:0,invBar:0,guides:false,snap:true,lock:"",presetName:"",emFont:"（版型預設）",waterRefract:true,textScale:100,bgMode:"gradient",bgColor:"#050608",maskColor:"#000000",brightness:100,vidBright:100,vidContrast:100,vidSat:100,vidBlur:0,textShadow:false,shX:0,shY:.2,shBlur:1.1,shAlpha:35,shLayers:1,glowAcc:25,shColor:"#000000",ghostOn:false,ghostA:"#ff285a",ghostB:"#00dcff",alphaOnly:false,posAnchor:"",posX:0,posY:0,posSafe:6,recFps:60,recLite:false,aspect:"fill",particles:50,pMode:"dots",scan:0,grain:.05,vignette:.5,beatRot:0,tone:"",beatSrc:"bpm",trans:"cut",kb:false,autoPerf:true});
 const CFG_DEFAULTS=JSON.parse(JSON.stringify(CONFIG));   /* 出廠預設：匯入設定檔時以此為底，避免瀏覽器記住的舊值殘留 */
-if(!RENDER)try{Object.assign(CONFIG,JSON.parse(localStorage.getItem("klcfg")||"{}"))}catch(e){}
+const LS_CFG="klcfg",LS_QK="klqk",LS_PO="klpo";   /* localStorage 鍵名集中於此：設定、快捷選單「最近使用」、面板分組展開狀態 */
+if(!RENDER)try{Object.assign(CONFIG,JSON.parse(localStorage.getItem(LS_CFG)||"{}"))}catch(e){}
 if(!RENDER)["posAnchor","posX","posY"].forEach(k=>CONFIG[k]=CFG_DEFAULTS[k]);   /* 全域位置只在本次使用有效，不跨次保存：每次開啟一律從「版型原位（正中）」開始；各句自己的位置存在 SRT 標記裡 */
 const $=s=>document.querySelector(s),SWd=()=>$("#stage").clientWidth,SHd=()=>$("#stage").clientHeight,m=$("#m"),L=$("#L");
 const DEMO=`1
@@ -437,8 +473,21 @@ document.addEventListener("keydown",e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target
 /* ===== [UI-PANEL] 參數面板 panel/posPanel/bgPanel、字體載入（FontFace + IndexedDB）、套用到畫面 css/bgCss/toneCss/save ===== */
 const P=[["bpm","BPM",40,220,1],["offset","節拍起點 offset(秒)",0,5,.01],["pulse","脈衝強度",0,.3,.005],["bounce","彈跳振幅(px)",0,80,1],["flash","閃白強度",0,.6,.01],
  ["speed","全域速度",.25,4,.05],["enter","進場秒數",.05,4,.05],["exit","退場秒數",.05,3,.05],["bigRatio","大字高度比例",.03,.8,.01],["textScale","文字整體縮放%",20,300,5],["spacing","字距(em)",-.1,2,.05],["weight","字重",100,900,100]];
+/* 面板區段錨點：panel() 重建時一併重建；showSec(id) 供 [QUICK]「面板跳轉」使用（id 清單見 QK_SECS） */
+function secAnchor(p,id){const a=document.createElement("span");a.dataset.sec=id;a.style.cssText="display:block;height:0";p.append(a)}
+const PANEL_TITLES={rhythm:"節奏・字體・顏色",preset:"預設組合・鎖定版型",export:"設定與專案 匯出／匯入",scene:"畫面・粒子・轉場・疊加層",pos:"位置微調",bg:"背景・亮度・陰影"};
+let panelOpen=(()=>{try{const r=JSON.parse(localStorage.getItem(LS_PO)||"null");return Array.isArray(r)?r:["rhythm"]}catch(e){return["rhythm"]}})();   /* 各分組展開狀態，panel() 重建後沿用 */
+function foldPanel(p){   /* 把 panel() 建好的扁平內容，依 secAnchor 折成 <details> 分組；只搬移節點，事件與參照都不變 */
+ let box=null;
+ [...p.childNodes].forEach(n=>{const id=n.dataset&&n.dataset.sec;
+  if(id){const d=document.createElement("details"),sm=document.createElement("summary");box=document.createElement("div");box.className="pb";d.className="ps";d.dataset.sec=id;sm.textContent=PANEL_TITLES[id]||id;d.append(sm,box);d.open=panelOpen.includes(id);
+   d.addEventListener("toggle",()=>{panelOpen=panelOpen.filter(x=>x!==id);if(d.open)panelOpen.push(id);try{localStorage.setItem(LS_PO,JSON.stringify(panelOpen))}catch(e){}});n.replaceWith(d)}
+  else if(box)box.append(n)});
+ const t=document.createElement("div");t.className="pt";
+ [["全部展開",1],["全部收合",0]].forEach(([x,v])=>{const b=document.createElement("button");b.textContent=x;b.onclick=()=>p.querySelectorAll("details.ps").forEach(d=>d.open=!!v);t.append(b)});p.prepend(t)}
+function showSec(id){const p=$("#panel");p.classList.remove("off");const a=p.querySelector(`[data-sec="${id}"]`);if(!a)return note("找不到面板區段："+id);if(a.tagName==="DETAILS")a.open=true;id==="rhythm"?p.scrollTo({top:0,behavior:"smooth"}):a.scrollIntoView({block:"start",behavior:"smooth"})}
 function panel(){
- const p=$("#panel");p.innerHTML="";
+ const p=$("#panel");p.innerHTML="";secAnchor(p,"rhythm");
  P.forEach(([k,n,a,b,s])=>{const l=document.createElement("label"),i=document.createElement("input");l.textContent=n+"：";const v=document.createElement("b");v.textContent=CONFIG[k];l.append(v);
   Object.assign(i,{type:"range",min:a,max:b,step:s,value:CONFIG[k]});i.oninput=()=>{CONFIG[k]=+i.value;v.textContent=i.value;save();if(k==="particles")perfPart=null;if(["bigRatio","textScale","spacing","weight","enter","exit","speed"].includes(k))cur=-2};p.append(l,i)});
  const mkc=(k,n)=>{const l=document.createElement("label"),i=document.createElement("input");l.textContent=n;i.type="color";i.dataset.k=k;i.value=CONFIG[k];i.oninput=()=>{CONFIG[k]=i.value;css();cur=-2;save()};p.append(l,i)};
@@ -448,7 +497,7 @@ function panel(){
  const up=document.createElement("input");up.type="file";up.accept=".ttf,.otf,.woff,.woff2";up.onchange=async()=>{const f=up.files[0];if(!f)return;const buf=await f.arrayBuffer();await addFont(f.name.replace(/\.\w+$/,""),buf);idbPut(f.name,buf)};
  const ul=document.createElement("label");ul.textContent="上傳字體";p.append(ul,up);
  const au=document.createElement("label");au.innerHTML='<input type="checkbox" id="auto"> 自動變化版型';p.append(au);$("#auto").checked=CONFIG.auto;$("#auto").onchange=e=>{CONFIG.auto=e.target.checked;cur=-2};
- const tap=document.createElement("button");tap.textContent="Tap 打拍子";let taps=[];tap.onclick=()=>{const n=performance.now();if(taps.length&&n-taps[taps.length-1]>2000)taps=[];taps.push(n);if(taps.length>=4){const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);CONFIG.bpm=Math.round(60000/iv);panel();save()}};p.append(tap);extra(p);extra3(p);posPanel(p);bgPanel(p);
+ const tap=document.createElement("button");tap.textContent="Tap 打拍子";let taps=[];tap.onclick=()=>{const n=performance.now();if(taps.length&&n-taps[taps.length-1]>2000)taps=[];taps.push(n);if(taps.length>=4){const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);CONFIG.bpm=Math.round(60000/iv);panel();save()}};p.append(tap);extra(p);extra3(p);posPanel(p);bgPanel(p);foldPanel(p);
 }
 let selIdx=-1,posRef=null;const EDR=[],r2p=v=>String(Math.round((+v||0)*100)/100);
 const layOf=x=>{const l=CONFIG.lock||x.lay;return LAYOUTS.includes(l)?l:"lowerleft"};
@@ -502,7 +551,7 @@ if(!RENDER){
   const end=()=>{if(!D)return;if(!D.moved){histA.pop();histKey="";histBtn()}D=null;st.style.cursor="";G0.classList.remove("drag");mark([])};
   st.addEventListener("pointerup",end);st.addEventListener("pointercancel",end)})();
 }
-function posPanel(p){
+function posPanel(p){secAnchor(p,"pos");
  const hd=t=>{const h=document.createElement("label");h.innerHTML="<b>"+t+"</b>";h.style.marginTop="14px";p.append(h)};
  hd("── 這一句的位置 ──");
  const info=document.createElement("div"),warn=document.createElement("div");info.style.cssText="margin:4px 0;line-height:1.5;opacity:.9";warn.style.cssText="margin:4px 0;color:#ffb347;line-height:1.5";p.append(info,warn);
@@ -559,7 +608,7 @@ function clearPos(){
  if(!confirm("會清除 "+n+" 句的 ^位置 標記（含 ^auto），全部改為跟隨全域。確定嗎？"))return;
  pushHist();subs.forEach(x=>x.pos="");cur=-2;refreshEditor();
  note("已清除 "+n+" 句的位置標記，全部跟隨全域。請用編輯器的「匯出帶標記的 SRT」存檔")}
-function bgPanel(p){
+function bgPanel(p){secAnchor(p,"bg");
  const h=document.createElement("label");h.innerHTML="<b>── 背景與亮度 ──</b>";h.style.marginTop="14px";p.append(h);
  const sel=(k,n,opts)=>{const l=document.createElement("label");l.textContent=n;const s=document.createElement("select");s.style.width="100%";
   opts.forEach(([v,t])=>{const o=document.createElement("option");o.value=v;o.textContent=t;s.append(o)});s.value=CONFIG[k];s.onchange=()=>{CONFIG[k]=s.value;bgCss();save()};p.append(l,s)};
@@ -601,7 +650,7 @@ function bgCss(){shCss();const c=CONFIG,r=document.documentElement,bg=$("#bg");
  r.classList.toggle("nobg",c.bgMode==="transparent"||!!c.alphaOnly);r.classList.toggle("alpha",!!c.alphaOnly);
  const ck=/^#[0-9a-f]{6}$/i.test(c.chroma||"")?c.chroma:"";r.classList.toggle("chroma",!!ck);if(ck)r.style.setProperty("--ck",ck);
  document.body.classList.toggle("tshadow",!!c.textShadow);toneCss()}
-function save(){try{localStorage.setItem("klcfg",JSON.stringify(CONFIG))}catch(e){}}
+function save(){try{localStorage.setItem(LS_CFG,JSON.stringify(CONFIG))}catch(e){}}
 $("#unlock").onclick=()=>{CONFIG.lock="";cur=-2;save();panel()};
 $("#tg").onclick=()=>$("#panel").classList.toggle("off");
 /* ===== [LAY-A] 版型 A（NL 表）：typewriter vertical blurfocus wipe glitch stack outline-big subtitle-box poster；輔助 CE / fit ===== */
@@ -691,7 +740,7 @@ async function buildProject(){
  const fonts=[];for(const[name,buf]of FONTBUF)if(FONTS[name])fonts.push({name,b64:await b64Of(buf)});
  return{srt:srtText(),config:JSON.parse(JSON.stringify(CONFIG)),...(fonts.length?{fonts}:{}),...(mediaInfo?{media:{name:mediaInfo.name,video:!!mediaInfo.video}}:{})}}
 function projCmd(){   // 依目前畫面比例給建議解析度（短邊 1080）；離線渲染一律以此尺寸排版，比例要和預覽一致外觀才會一致
- const a=CONFIG.aspect,st=$("#stage"),r=a==="9:16"?9/16:a==="16:9"?16/9:(st.clientWidth/st.clientHeight||16/9);
+ const a=CONFIG.aspect,st=$("#stage"),r=a==="9:16"?9/16:a==="16:9"?16/9:((document.body.style.getPropertyValue("--edh")?innerWidth/innerHeight:st.clientWidth/st.clientHeight)||16/9);
  const W=r>=1?Math.round(1080*r/2)*2:1080,H=r>=1?1080:Math.round(1080/r/2)*2,q=f=>/[\s()&]/.test(f)?`"${f}"`:f;
  const md=mediaInfo?` ${mediaInfo.video?"--video":"--audio"} ${q("input/"+mediaInfo.name)}`:"";
  return{cmd:`node render/run.mjs --project input/project.json${md} --width ${W} --height ${H} --fps 30`,media:mediaInfo?mediaInfo.name:""}}
@@ -713,7 +762,11 @@ function projBox(p){   // 回傳 fill()：依 projInfo 重畫提示框（panel()
   t("離線後製（輝光 --glow、色差 --aberration、調色 --grade）只影響離線輸出的預覽 MP4，網頁預覽看不到；見 README。","opacity:.7")};
  fill();return fill}
 function dl(b,n){const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=n;a.click()}
-function editor(){let d=$("#edm");if(d){d.remove();return}
+const exportConfig=()=>dl(new Blob([JSON.stringify(CONFIG)],{type:"application/json"}),"lyrics_config.json");
+let projFill=()=>{};   /* projBox() 回傳的重畫函式（panel() 重建後指向新的提示框）；匯出後呼叫它更新提示 */
+async function exportProjectUI(){await exportProject();projFill()}
+function resetSettings(msg){if(confirm(msg||"清除已儲存的設定並重新載入頁面？")){try{localStorage.removeItem(LS_CFG)}catch(e){}location.reload()}}
+function editor(){let d=$("#edm");if(d){d.remove();edLayout();return}
  d=document.createElement("div");d.id="edm";EDR.length=0;d.style.cssText="position:fixed;inset:auto 240px 0 0;height:46vh;background:rgba(10,12,20,.95);z-index:6;overflow:auto;padding:10px;font-size:12px";   /* 預設半高：上半部留給預覽，方便邊看邊調位置 */
  const sel=(o,v,f)=>{const e=document.createElement("select");["",...o].forEach(x=>e.add(new Option(x||"（預設）",x)));e.value=v||"";e.onchange=()=>{f(e.value);cur=-2};return e};
  {const h=document.createElement("div");h.style.cssText="opacity:.7;margin-bottom:6px";h.textContent="可用樣式（@，最多 3 個，逗號分隔）："+[...Object.keys(ST),...Object.keys(STC)].join("、");d.append(h)}
@@ -740,7 +793,24 @@ function editor(){let d=$("#edm");if(d){d.remove();return}
    const ck=document.createElement("input");ck.type="checkbox";ck.checked=EDSEL.has(xi);
    ck.onclick=ev=>{const on=ck.checked;if(ev.shiftKey&&lastCk>=0){for(let i=Math.min(lastCk,xi);i<=Math.max(lastCk,xi);i++){on?EDSEL.add(i):EDSEL.delete(i);if(EDR[i])EDR[i].ck.checked=on}}else on?EDSEL.add(xi):EDSEL.delete(xi);lastCk=xi;cntUpd()};
    EDR[xi]={pS,pX,pY,ck};r.append(f,sI,bI,pS,pX,pY);r.prepend(ck);d.append(r)});
- const b=document.createElement("button");b.textContent="匯出帶標記的 SRT";b.onclick=exportSRT;d.append(b);document.body.append(d)}
+ const b=document.createElement("button");b.textContent="匯出帶標記的 SRT";b.onclick=exportSRT;d.append(b);document.body.append(d);edLayout();edRO&&edRO.observe(d)}
+/* 句子編輯器 × 預覽並排：編輯器開著（且高度 ≤72% 視窗）時，把預覽縮進頂欄下方、編輯器上方；錄製／離線渲染時一律還原。
+   做法：在 body 設 --edt/--edh/--edr，CSS 的 #stage 與 applyStage() 依此計算可用區；沒設定時＝原本全視窗。 */
+const edRO=typeof ResizeObserver==="function"?new ResizeObserver(()=>edLayout()):null;
+function edLayout(){const d=$("#edm"),b=document.body,vs=["--edt","--edh","--edr"];
+ const on=!RENDER&&d&&!recording&&!b.classList.contains("rec")&&d.offsetHeight>0&&d.offsetHeight<=innerHeight*.72;
+ let g=$("#edgrip");
+ if(d&&!recording&&!b.classList.contains("rec")){if(!g){g=document.createElement("div");g.id="edgrip";g.title="拖曳調整預覽與編輯器的比例";document.body.append(g);
+   g.onpointerdown=e=>{e.preventDefault();g.setPointerCapture(e.pointerId);g.classList.add("drag");
+    const mv=ev=>{const ed=$("#edm");if(ed){ed.style.height=Math.round(Math.max(140,Math.min(Math.floor(innerHeight*.7),innerHeight-ev.clientY)))+"px";edLayout()}},
+     up=()=>{g.classList.remove("drag");g.removeEventListener("pointermove",mv);g.removeEventListener("pointerup",up)};g.addEventListener("pointermove",mv);g.addEventListener("pointerup",up)}}
+  g.style.bottom=(d.offsetHeight-4)+"px"}else if(g)g.remove();
+ const key=on?[$("#bar").offsetHeight,d.offsetHeight,innerWidth,innerHeight].join():"";
+ if(key===edLayout.k)return;edLayout.k=key;
+ if(on){b.style.setProperty("--edt",$("#bar").offsetHeight+"px");b.style.setProperty("--edh",d.offsetHeight+"px");b.style.setProperty("--edr","240px")}else vs.forEach(k=>b.style.removeProperty(k));
+ applyStage()}
+edLayout.k="";
+if(!RENDER){addEventListener("resize",()=>edLayout());new MutationObserver(()=>edLayout()).observe(document.body,{attributes:true,attributeFilter:["class"]})}   /* 視窗縮放、錄製開始／結束（body.rec）時重算 */
 $("#ed").onclick=editor;
 /* 套用預設組合：先把「氛圍類」欄位與位置還原成預設，再疊上組合內容。
    文字縮放／文字陰影／鎖定版型是使用者常手調的欄位：只有「上一個套用的組合設過它」才還原，
@@ -751,16 +821,17 @@ function applyPreset(name){
  Object.keys(PRESET_KEEP).forEach(k=>{if(k in prev)back[k]=PRESET_KEEP[k]});
  Object.assign(CONFIG,{bokeh:0,leak:0,lightning:0,scratch:0,crt:0,vhs:0,invBar:0,scan:0,grain:.05,pMode:"dots",tone:"",trans:"cut",kb:0,beatRot:0,particles:50,posAnchor:"",posX:0,posY:0,posSafe:6},back,P,{presetName:name});
  perfPart=null;applyScene();css();cur=-2;save();panel();return true}
-function extra(p){
+function extra(p){secAnchor(p,"preset");
  const mk=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;p.append(b)};
  const l=document.createElement("label");l.textContent="預設組合";const ps=document.createElement("select");ps.style.width="100%";ps.add(new Option("選擇…",""));Object.keys(PRESETS).forEach(k=>ps.add(new Option(k,k)));
  ps.onchange=()=>applyPreset(ps.value);
  const l2=document.createElement("label");l2.textContent="鎖定單一版型";const ls=document.createElement("select");ls.style.width="100%";ls.add(new Option("（不鎖定）",""));LAYOUTS.forEach(k=>ls.add(new Option(k,k)));ls.value=CONFIG.lock||"";ls.onchange=()=>{CONFIG.lock=ls.value;cur=-2;save()};
  p.append(l,ps,l2,ls);emFontUI(p);
- mk("清除瀏覽器記住的設定（恢復預設）",()=>{if(confirm("會清除瀏覽器記住的所有設定（顏色、色彩、陰影…）並重新載入頁面；已上傳的字體不受影響。確定嗎？")){try{localStorage.removeItem("klcfg")}catch(e){}location.reload()}});
-  mk("匯出設定 JSON",()=>dl(new Blob([JSON.stringify(CONFIG)],{type:"application/json"}),"lyrics_config.json"));
- let pfill=()=>{};mk("匯出渲染專案（project.json）",async()=>{await exportProject();pfill()});pfill=projBox(p);
- const f=document.createElement("input");f.type="file";f.accept=".json";
+ mk("清除瀏覽器記住的設定（恢復預設）",()=>resetSettings("會清除瀏覽器記住的所有設定（顏色、色彩、陰影…）並重新載入頁面；已上傳的字體不受影響。確定嗎？"));
+  secAnchor(p,"export");
+  mk("匯出設定 JSON",exportConfig);
+ mk("匯出渲染專案（project.json）",exportProjectUI);projFill=projBox(p);
+ const f=document.createElement("input");f.type="file";f.accept=".json";f.id="cfgImport";
   f.onchange=async()=>{try{const J=JSON.parse(await txt(f.files[0]));
    if(J&&typeof J==="object"&&J.config&&typeof J.config==="object"&&"srt" in J){   /* 渲染專案（project.json）：字幕＋設定＋字體一起還原 */
     for(const ft of J.fonts||[]){try{const buf=await(await fetch("data:application/octet-stream;base64,"+(ft.b64||ft.data))).arrayBuffer();await addFont(ft.name,buf);idbPut(ft.name+".ttf",buf)}catch(e){console.error("字體還原失敗："+ft.name,e)}}
@@ -811,7 +882,7 @@ function ambient(ts,dt){
  if(flashT>0){cx.fillStyle=`rgba(255,255,255,${flashT*.5})`;cx.fillRect(0,0,W,H);flashT-=dt*4}overlays(ts,dt);
 }
 function applyScene(){applyStage();toneCss();bgCss();guidesCss();document.body.classList.toggle("kb",!!CONFIG.kb)}
-function extra3(p){
+function extra3(p){secAnchor(p,"scene");
  const sel=(t,k,o)=>{const l=document.createElement("label");l.textContent=t;const e=document.createElement("select");e.style.width="100%";o.forEach(([a,v])=>e.add(new Option(a,v)));e.value=CONFIG[k];e.onchange=()=>{CONFIG[k]=e.value;save();applyScene()};p.append(l,e)};
  sel("錄製幀率","recFps",[["60 fps","60"],["30 fps（較不吃效能）","30"]]);
  sel("畫面比例","aspect",[["填滿視窗","fill"],["16:9","16:9"],["9:16 直式","9:16"]]);
@@ -819,7 +890,7 @@ function extra3(p){
  sel("色彩","tone",[["原色",""],["黑白","grayscale(1)"],["復古褪色","sepia(.6) contrast(.9) saturate(.8)"],["冷色調","hue-rotate(-20deg) saturate(1.1)"],["暖色調","hue-rotate(25deg) saturate(1.2) sepia(.2)"]]);
  sel("節拍來源","beatSrc",[["固定 BPM","bpm"],["音訊低頻偵測","audio"]]);
  sel("句間轉場","trans",[["cut","cut"],["flash 閃白","flash"],["crossfade 淡入","crossfade"],["wipe 掃過","wipe"],["zoom-through 穿越","zoom"]]);
- [["kb","緩慢推近 (Ken Burns)"],["autoPerf","掉幀時自動降級"],["recLite","錄製輕量模式（半解析度畫布、關噪點與發光）"],["bokeh","光斑 bokeh"],["leak","漏光"],["lightning","閃電"],["scratch","老電影刮痕"],["crt","CRT 畫素格與暗角"],["vhs","VHS 抖動與追蹤線"],["invBar","每小節首拍反相閃一下"]].forEach(([k,t])=>{const l=document.createElement("label");const c=document.createElement("input");c.type="checkbox";c.checked=!!CONFIG[k];c.onchange=()=>{CONFIG[k]=c.checked;save();applyScene()};l.append(c," "+t);p.append(l)});const rb=document.createElement("button");rb.textContent="重設所有設定";rb.onclick=()=>{if(confirm("清除已儲存的設定並重新載入頁面？")){try{localStorage.removeItem("klcfg")}catch(e){}location.reload()}};p.append(rb)}
+ [["kb","緩慢推近 (Ken Burns)"],["autoPerf","掉幀時自動降級"],["recLite","錄製輕量模式（半解析度畫布、關噪點與發光）"],["bokeh","光斑 bokeh"],["leak","漏光"],["lightning","閃電"],["scratch","老電影刮痕"],["crt","CRT 畫素格與暗角"],["vhs","VHS 抖動與追蹤線"],["invBar","每小節首拍反相閃一下"]].forEach(([k,t])=>{const l=document.createElement("label");const c=document.createElement("input");c.type="checkbox";c.checked=!!CONFIG[k];c.onchange=()=>{CONFIG[k]=c.checked;save();applyScene()};l.append(c," "+t);p.append(l)});const rb=document.createElement("button");rb.textContent="重設所有設定";rb.onclick=()=>resetSettings();p.append(rb)}
 P.push(["particles","粒子數量",0,200,5],["scan","掃描線",0,.2,.01],["grain","噪點",0,.2,.01],["vignette","暗角",0,1,.05],["dim","背景暗度",0,90,5],["beatRot","隨拍旋轉(度)",0,3,.1]);
 Object.assign(PRESETS.櫻花日系,{pMode:"sakura",particles:40,tone:"sepia(.2) saturate(1.1)"});Object.assign(PRESETS.復古VHS,{scan:.12,grain:.12,tone:"sepia(.6) contrast(.9) saturate(.8)"});
 Object.assign(PRESETS.賽博龐克,{pMode:"rain",particles:60,scan:.08,trans:"flash"});Object.assign(PRESETS.強烈節奏,{beatRot:1.2,trans:"flash",particles:90});Object.assign(PRESETS.霓虹夜,{pMode:"stars",particles:80});
@@ -1248,8 +1319,77 @@ registerLayout("pv-vertical",(sb,c,w,big)=>pvBuild(sb,c,big,true),{brace:1});
 PRESETS["電影字幕（底部置中）"]={font:"黑體",weight:500,spacing:.06,pulse:0,bounce:0,flash:0,particles:0,grain:0,vignette:0,trans:"cut",dim:30,textScale:35,textShadow:true,posAnchor:"bc",posSafe:8,lock:"center"};
 PRESETS.街頭拼貼={font:"英文展示",weight:700,spacing:.05,grain:.12,scratch:1,pulse:.06,accent:"#ffd166"};
 function applyStage(){const s=$("#stage"),a=CONFIG.aspect||"fill";
+ if(document.body.style.getPropertyValue("--edh")){   /* 句子編輯器開著：預覽縮進「頂欄下、編輯器上」的可用區；「填滿視窗」改用視窗比例縮放，版面才與全螢幕一致 */
+  const r=a==="9:16"?9/16:a==="16:9"?16/9:(innerWidth/innerHeight||16/9);
+  s.style.width=`min(var(--avw),calc(var(--avh)*${r}))`;s.style.height=`min(var(--avh),calc(var(--avw)/${r}))`;sizeCv();cur=-2;return}
  s.style.width=a==="fill"?"100vw":a==="9:16"?"min(100vw,56.25vh)":"min(100vw,177.78vh)";s.style.height=a==="fill"?"100vh":a==="9:16"?"min(100vh,177.78vw)":"min(100vh,56.25vw)";sizeCv();cur=-2}
 css();applyScene();panel();
+/* ===== [QUICK] 快捷選單（頂欄「⚡ 快捷」或 Ctrl+K）：所有工具、匯出、載入、面板跳轉集中在 quickActions() 這一張表。
+   新增功能：在 quickActions() 的陣列加一筆 {id,g,t,h,k,on,run}：g＝群組（須在 QK_GROUPS；null＝只在搜尋時出現）、t＝名稱、h＝右側提示、
+   k＝搜尋關鍵字、on＝() => true 或「不可用的原因」字串、run＝執行內容。選單只負責呼叫既有函式／按鈕，不含功能邏輯；?check=1 的 selfCheck 會驗證這張表。===== */
+const QK_GROUPS=["匯出","載入","編輯","面板跳轉","檢視與系統"];
+const QK_SECS=["rhythm","preset","export","scene","pos","bg"];   /* 對應 secAnchor(p,id) 的面板區段 */
+function quickActions(){
+ const needSubs=()=>subs.length?true:"請先載入 SRT 或範例",click=q=>()=>$(q).click(),jump=id=>()=>showSec(id),
+ A=[
+  {id:"exp-srt",g:"匯出",t:"匯出帶標記的 SRT",h:"lyrics_tagged.srt",k:"srt export 字幕 標記 下載",on:needSubs,run:exportSRT},
+  {id:"exp-cfg",g:"匯出",t:"匯出設定 JSON",h:"lyrics_config.json",k:"config json 設定 下載",run:exportConfig},
+  {id:"exp-proj",g:"匯出",t:"匯出渲染專案 project.json",h:"字幕＋設定＋字體",k:"project render 離線 渲染 專案 備份",on:needSubs,run:async()=>{await exportProjectUI();showSec("export")}},
+  {id:"exp-cmd",g:"匯出",t:"複製離線渲染指令",h:"node render/run.mjs …",k:"command cmd 指令 複製",run:async()=>{const c=projCmd().cmd;try{await navigator.clipboard.writeText(c);note("已複製離線渲染指令："+c)}catch(e){prompt("複製這行指令：",c)}}},
+  {id:"exp-rec",g:"匯出",t:"全螢幕錄製並下載影片",h:"mp4／webm",k:"record 錄製 影片 錄影",on:needSubs,run:click("#rec")},
+  {id:"ld-srt",g:"載入",t:"載入 SRT 字幕",h:"",k:"srt load 字幕 開啟",run:click("#fs")},
+  {id:"ld-media",g:"載入",t:"載入音樂／影片",h:"",k:"media audio video 音樂 影片 媒體",run:click("#fm")},
+  {id:"ld-json",g:"載入",t:"匯入設定 JSON／渲染專案",h:"project.json 整包還原",k:"import json 匯入 還原 設定 專案",run:click("#cfgImport")},
+  {id:"ld-demo",g:"載入",t:"載入範例",h:"",k:"demo 範例 示範",run:click("#demo")},
+  {id:"ed-editor",g:"編輯",t:"句子編輯器（開／關）",h:"",k:"editor 編輯器 逐句",run:click("#ed")},
+  {id:"ed-rnd",g:"編輯",t:"隨機化版型與動畫",h:"可復原",k:"random 隨機 靈感",on:needSubs,run:click("#rnd")},
+  {id:"ed-undo",g:"編輯",t:"復原",h:"Ctrl+Z",k:"undo 復原",on:()=>histOf===subs&&histA.length?true:"沒有可復原的動作",run:undo},
+  {id:"ed-redo",g:"編輯",t:"重做",h:"Ctrl+Y",k:"redo 重做",on:()=>histOf===subs&&histB.length?true:"沒有可重做的動作",run:redo},
+  {id:"ed-unlock",g:"編輯",t:"解除版型鎖定",h:"",k:"unlock lock 鎖定 解除",on:()=>CONFIG.lock?true:"目前沒有鎖定版型",run:click("#unlock")},
+  {id:"ed-bake",g:"編輯",t:"把全域位置寫入各句",h:"",k:"position bake 位置 寫入",on:needSubs,run:bakePos},
+  {id:"ed-clrpos",g:"編輯",t:"清除所有句子的位置",h:"",k:"position clear 位置 清除",on:needSubs,run:clearPos},
+  {id:"nav-rhythm",g:"面板跳轉",t:"節奏・字體・顏色",h:"面板最上方",k:"bpm 字體 顏色 節奏 tap",run:jump("rhythm")},
+  {id:"nav-preset",g:"面板跳轉",t:"預設組合・鎖定版型・設定匯出入",h:"",k:"preset 預設 鎖定 匯出 匯入",run:jump("preset")},
+  {id:"nav-export",g:"面板跳轉",t:"面板的匯出區",h:"",k:"export 匯出",run:jump("export")},
+  {id:"nav-scene",g:"面板跳轉",t:"畫面比例・粒子・轉場・疊加層",h:"",k:"aspect 比例 粒子 轉場 疊加 特效 錄製幀率",run:jump("scene")},
+  {id:"nav-pos",g:"面板跳轉",t:"位置微調",h:"",k:"position 位置 錨點 參考線",run:jump("pos")},
+  {id:"nav-bg",g:"面板跳轉",t:"背景與亮度・陰影",h:"",k:"background 背景 亮度 陰影 影片",run:jump("bg")},
+  {id:"sys-play",g:"檢視與系統",t:"播放／暫停",h:"空白鍵",k:"play pause 播放 暫停",run:click("#play")},
+  {id:"sys-panel",g:"檢視與系統",t:"顯示／隱藏參數面板",h:"",k:"panel 參數 面板",run:click("#tg")},
+  {id:"sys-guides",g:"檢視與系統",t:"顯示／隱藏參考線",h:CONFIG.guides?"目前：開":"目前：關",k:"guides 參考線 安全邊界",run:()=>{CONFIG.guides=!CONFIG.guides;save();guidesCss();panel()}},
+  {id:"sys-reset",g:"檢視與系統",t:"清除記住的設定（恢復預設）",h:"會重新載入",k:"reset 重設 清除 預設",run:()=>resetSettings()}];
+ Object.keys(PRESETS).forEach(n=>A.push({id:"preset:"+n,g:null,t:"預設組合："+n,h:"",k:"preset 預設 組合 套用",run:()=>applyPreset(n)}));
+ [["","（不鎖定）"],...LAYOUTS.map(l=>[l,l])].forEach(([l,n])=>A.push({id:"lock:"+l,g:null,t:"鎖定版型："+n,h:"",k:"lock layout 鎖定 版型",run:()=>{CONFIG.lock=l;cur=-2;save();panel()}}));
+ return A}
+if(!RENDER)(()=>{
+ const box=$("#qk"),inp=$("#qks"),list=$("#qkl"),btn=$("#qkb");let items=[],act=0;
+ const recent=()=>{try{const r=JSON.parse(localStorage.getItem(LS_QK)||"[]");return Array.isArray(r)?r:[]}catch(e){return[]}},
+  remember=id=>{try{localStorage.setItem(LS_QK,JSON.stringify([id,...recent().filter(x=>x!==id)].slice(0,4)))}catch(e){}},
+  isOn=()=>box.classList.contains("on"),close=()=>box.classList.remove("on"),
+  setAct=(i,scroll)=>{if(!items.length)return;act=(i+items.length)%items.length;items.forEach((it,j)=>it.d.classList.toggle("act",j===act));scroll&&items[act].d.scrollIntoView({block:"nearest"})},
+  pick=it=>{if(!it)return;if(!it.ok)return note(it.r);close();remember(it.a.id);   /* 先關選單再執行；同一次點擊內執行，錄製／選檔才拿得到使用者授權 */
+   try{const r=it.a.run();r&&r.catch&&r.catch(e=>alert("執行失敗："+e.message))}catch(e){alert("執行失敗："+e.message)}},
+  mk=(tag,cls,txt)=>{const e=document.createElement(tag);e.className=cls;if(txt!=null)e.textContent=txt;return e};
+ function draw(){
+  const q=inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean),all=quickActions(),byId=new Map(all.map(a=>[a.id,a]));
+  list.textContent="";items=[];
+  const add=a=>{const r=a.on?a.on():true,ok=r===true,d=mk("div","qi"+(ok?"":" dis")),it={a,d,ok,r};
+   d.append(mk("span","",a.t),mk("span","qh",ok?(a.h||""):r));d.onclick=()=>pick(it);d.onmouseenter=()=>setAct(items.indexOf(it));list.append(d);items.push(it)};
+  if(q.length){const hit=all.filter(a=>{const h=(a.t+" "+(a.g||"")+" "+(a.k||"")).toLowerCase();return q.every(w=>h.includes(w))});
+   hit.forEach(add);if(!hit.length)list.append(mk("div","qe","找不到符合的功能"))}
+  else{const rc=recent().map(id=>byId.get(id)).filter(Boolean);
+   if(rc.length){list.append(mk("div","qg","最近使用"));rc.forEach(add)}
+   QK_GROUPS.forEach(g=>{const xs=all.filter(a=>a.g===g);if(xs.length){list.append(mk("div","qg",g));xs.forEach(add)}});
+   list.append(mk("div","qe","輸入關鍵字，可直接搜尋「預設組合」與「鎖定版型」"))}
+  setAct(0)}
+ const open=()=>{box.classList.add("on");inp.value="";draw();inp.focus()};
+ btn.onclick=()=>isOn()?close():open();
+ inp.oninput=draw;
+ inp.addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();setAct(act+1,1)}else if(e.key==="ArrowUp"){e.preventDefault();setAct(act-1,1)}else if(e.key==="Enter"){e.preventDefault();pick(items[act])}});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&isOn())close();else if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&e.key.toLowerCase()==="k"&&!recording){e.preventDefault();isOn()?close():open()}});
+ document.addEventListener("pointerdown",e=>{if(isOn()&&!box.contains(e.target)&&!btn.contains(e.target))close()});
+})();
+
 /* ===== [RECORD] 全螢幕錄製：同一次點擊內先全螢幕再 getDisplayMedia（倒數 → MediaRecorder → 下載）===== */
 let rec=null,chunks=[],stream=null,finishing=false,counting=false;
 $("#rec").onclick=async()=>{
@@ -1258,7 +1398,7 @@ $("#rec").onclick=async()=>{
  let fsP=document.documentElement.requestFullscreen?.().catch(()=>{});
  try{stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:Number(CONFIG.recFps)||60},audio:true,preferCurrentTab:true,selfBrowserSurface:"include",systemAudio:"include"})}
  catch(e){document.fullscreenElement&&document.exitFullscreen();return alert("未取得錄製授權（"+(e.name||"錯誤")+"）。請在授權視窗選「此分頁」。")}
- await fsP;recording=true;counting=true;chunks=[];finishing=false;rec=null;stream.getVideoTracks()[0].onended=()=>stopRec();pause();
+ await fsP;recording=true;counting=true;edLayout();chunks=[];finishing=false;rec=null;stream.getVideoTracks()[0].onended=()=>stopRec();pause();
  if(CONFIG.aspect!=="fill"&&window.CropTarget){try{await stream.getVideoTracks()[0].cropTo(await CropTarget.fromElement($("#stage")))}catch(e){note("無法裁切成指定比例，將錄製整個視窗："+e.message)}}
  if(!stream.getAudioTracks().length)note("警告：沒有音訊軌。請勾選「分享分頁音訊」；示範模式本來就是靜音。");
  await document.fonts.ready;if(!counting)return;
@@ -1300,6 +1440,9 @@ function selfCheck(){
  [...FULLBLEED].filter(k=>!L.has(k)).forEach(k=>out.push("FULLBLEED 不在 LAYOUTS："+k));
  LAYOUTS.filter((k,i)=>LAYOUTS.indexOf(k)!==i).forEach(k=>out.push("LAYOUTS 重複："+k));
  Object.keys(CONFIG).filter(k=>!(k in CFG_DEFAULTS)).forEach(k=>out.push("CONFIG 有、CFG_DEFAULTS 沒有（匯入設定時舊值會殘留）："+k));
+ {const ids=new Set();quickActions().forEach(a=>{ids.has(a.id)&&out.push("快捷表 id 重複："+a.id);ids.add(a.id);a.g===null||QK_GROUPS.includes(a.g)||out.push("快捷表群組未登記："+a.id+"／"+a.g);typeof a.run==="function"||out.push("快捷表缺 run："+a.id)});
+  ["#fs","#fm","#demo","#rec","#ed","#rnd","#unlock","#tg","#play","#qkb","#qk","#cfgImport"].forEach(q=>$(q)||out.push("缺少元素："+q));
+  QK_SECS.forEach(id=>$('#panel [data-sec="'+id+'"]')||out.push("面板缺少區段錨點："+id))}
  out.length?console.warn("[selfCheck] 發現 "+out.length+" 項：\n"+out.join("\n")):console.info("[selfCheck] 登記一致");return out}
 if(/[?&]check=1(&|$)/.test(location.search))window.addEventListener("load",selfCheck);
 window.__selfCheck=selfCheck;
